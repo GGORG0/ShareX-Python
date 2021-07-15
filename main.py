@@ -27,7 +27,7 @@ if not os.path.exists(os.path.join("config","secret_key.txt")):
 with open(os.path.join("config","secret_key.txt"), "rb") as f:
     app.config['SECRET_KEY'] = f.read()
 if not os.path.exists(config['storage_path']):
-    os.mkdir(config['storage_path'])
+    os.mkdir(config['storage_folder'])
 
 @app.errorhandler(404)
 def not_found(e):
