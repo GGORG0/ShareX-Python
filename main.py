@@ -92,7 +92,7 @@ def upload():
         user['images'].append(filename)
         users[attributes['username'][0]] = user
         users.close()
-        return json.dumps({"url": url_for(get_img, name=filename)}), 200
+        return json.dumps({"url": url_for("get_img", name=filename)}), 200
 
 @app.route("/i/<name>", methods=['GET', 'DELETE'])
 def get_img(name):
