@@ -26,7 +26,7 @@ if not os.path.exists(os.path.join("config","secret_key.txt")):
         f.write(os.urandom(16))
 with open(os.path.join("config","secret_key.txt"), "rb") as f:
     app.config['SECRET_KEY'] = f.read()
-if not os.path.exists(config['storage_path']):
+if not os.path.exists(config['storage_folder']):
     os.mkdir(config['storage_folder'])
 
 @app.errorhandler(404)
