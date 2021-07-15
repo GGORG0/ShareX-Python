@@ -92,7 +92,7 @@ def upload():
         user['images'].append(filename)
         users[attributes['username'][0]] = user
         users.close()
-        return json.dumps({"url": url_for("get_img", name=filename)}), 200
+        return json.dumps({"url": url_for("get_img", name=filename, _external=True)}), 200
 
 @app.route("/i/<name>", methods=['GET', 'DELETE'])
 def get_img(name):
@@ -241,7 +241,7 @@ def sharex_config():
         "Name": config['name'],
         "DestinationType": "ImageUploader",
         "RequestMethod": "POST",
-        "RequestURL": url_for("upload"),
+        "RequestURL": url_for("upload", _external=True),
         "Body": "MultipartFormData",
         "Arguments": {
             "username": user['username'],
