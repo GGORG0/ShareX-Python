@@ -15,7 +15,7 @@ This is a ShareX uploader server written in Python Flask, also featuring a web f
     - `name`
         This is your host's name. Put whatever you want in there.
     - `discord`
-        This is the invite **code** for your Discord server. That means that if my invie is `https://discord.gg/abcdef`, the code will be `abcdef`
+        This is the invite **code** for your Discord server. That means that if my invite is `https://discord.gg/abcdef`, the code will be `abcdef`
 4. Add a favicon as `config/favicon.ico`
 5. Install the requirements using `pip install -r requirements.txt`
 6. Start the host using a WSGI server and enjoy! A startup file for *Phusion Passenger* is included by default.
