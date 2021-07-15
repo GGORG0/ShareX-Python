@@ -1,0 +1,4 @@
+flask
+pillow
+passlib
+flask-wtf

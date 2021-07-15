@@ -1,0 +1,7 @@
+{
+    "allowed_extensions": [".png", ".jpg", ".jpeg", ".gif"],
+    "motd": "cool hosting",
+    "storage_folder": "images",
+    "name": "ShareX-Python",
+    "discord": "your_invite_code"
+}

@@ -1,0 +1,18 @@
+{% extends "header.html" %}
+
+{% block body %}
+
+<h1>Register</h1>
+<br>
+{% from "_formhelpers.html" import render_field %}
+<form method=post action="/dashboard/register/">
+    <dl>
+        {{ render_field(form.username) }}
+        {{ render_field(form.email) }}
+        {{ render_field(form.password) }}
+        {{ render_field(form.confirm) }}
+    </dl>
+    <p><input type=submit value=Register></p>
+</form>
+
+{% endblock %}
