@@ -5,23 +5,23 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--bs-gray); border-radius: 1rem;">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/dashboard/">Dashboard</a>
+        <a class="navbar-brand" href="{{ url_for('dashboard') }}">Dashboard</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardNavBar">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="dashboardNavBar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/dashboard/account/">account</a>
+                    <a class="nav-link active" href="{{ url_for('account') }}">account</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="/dashboard/sharex-config/">ShareX config</a>
+                    <a class="nav-link active" href="{{ url_for('sharex_config') }}">ShareX config</a>
                 </li>
                 <!-- <li class="nav-item">
-                    <a class="nav-link active" href="/dashboard/gallery/">image gallery</a>
+                    <a class="nav-link active" href="{{ url_for('gallery') }}">image gallery</a>
                 </li> -->
                 <li class="nav-item">
-                    <a class="nav-link active" href="/dashboard/logout/">logout</a>
+                    <a class="nav-link active" href="{{ url_for('logout') }}">logout</a>
                 </li>
             </ul>
         </div>

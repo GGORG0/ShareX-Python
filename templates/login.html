@@ -5,7 +5,7 @@
 <h1>Login</h1>
 <br>
 {% from "_formhelpers.html" import render_field %}
-<form method=post action="/dashboard/login/">
+<form method=post action="{{ url_for('login') }}">
     <dl>
         {{ render_field(form.username) }}
         {{ render_field(form.password) }}

@@ -18,7 +18,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <a href="/dashboard/regenerate-key/" class="btn btn-primary" style="background-color: var(--bs-red);">Yes</a>
+        <a href="{{ url_for('regenerate_key') }}" class="btn btn-primary" style="background-color: var(--bs-red);">Yes</a>
       </div>
     </div>
   </div>
@@ -57,7 +57,7 @@
         <div class="card" style="width: 18rem;">
             <div class="card-body">
                 <h5 class="card-title">Password</h5>
-                <a href="/dashboard/change-password/" class="btn btn-primary">Change it</a>
+                <a href="{{ url_for('change_password') }}" class="btn btn-primary">Change it</a>
             </div>
         </div>
     </div>
@@ -80,7 +80,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
-        <a href="/dashboard/delete-account/" class="btn btn-primary" style="background-color: var(--bs-red);">Yes</a>
+        <a href="{{ url_for('delete_account') }}" class="btn btn-primary" style="background-color: var(--bs-red);">Yes</a>
       </div>
     </div>
   </div>

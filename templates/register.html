@@ -5,7 +5,7 @@
 <h1>Register</h1>
 <br>
 {% from "_formhelpers.html" import render_field %}
-<form method=post action="/dashboard/register/">
+<form method=post action="{{ url_for('register') }}">
     <dl>
         {{ render_field(form.username) }}
         {{ render_field(form.email) }}
