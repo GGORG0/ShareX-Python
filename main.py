@@ -152,7 +152,7 @@ def get_img(id):
         ret = render_template("image.html", name=config['name'], version=ver, img_name=image['name'],
                               img_id=image['id'], img_ext=image['ext'], size_kb=str(round(image['size_b'] / 1024, 2)), size_mb=str(round(image['size_b'] / (1024 * 1024), 2)), uploaded_by=user['username'],
                               uploaded_uid=user['uid'], uploaded_at=datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
-                              embed_color=embed['color'], embed_title=embed['title'], embed_desc=embed['desc'], embed_adv=embed_adv)
+                              embed_color=embed['color'], embed_title=embed['title'], embed_desc=embed['desc'], embed_adv=embed_adv, embed_color_on=color_on, embed_title_on=title_on, embed_desc_on=desc_on)
         images.close()
         users.close()
         return ret
