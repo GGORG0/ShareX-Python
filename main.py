@@ -481,6 +481,8 @@ def gallery():
         img, _ = os.path.splitext(img)
         imgs.append(images[img])
 
+    imgs.reverse()
+
     ret = render_template("gallery.html", name=config['name'], version=ver, motd=config['motd'], username=user['username'], imgs=imgs)
     users.close()
     images.close()
