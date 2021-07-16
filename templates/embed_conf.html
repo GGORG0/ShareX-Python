@@ -25,16 +25,6 @@
         </div>
         <div class="col">
             <p>
-                Your current configuration is:
-                <br>
-                {% for name, value in current.items() %}
-                    <strong>{{ name.replace("_", " ").capitalize() }}:</strong> {{ value }}
-                    <br>
-                {% endfor %}
-            </p>
-        </div>
-        <div class="col">
-            <p>
                 The available variables are:
                 <br>
                 {% for name in vars %}

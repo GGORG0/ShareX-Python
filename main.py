@@ -1,7 +1,8 @@
+from typing import Text
 from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, make_response
 import re
 import time
-from wtforms import Form, StringField, PasswordField, validators
+from wtforms import Form, StringField, PasswordField, validators, TextAreaField
 from passlib.hash import sha256_crypt
 from functools import wraps
 import json
@@ -223,16 +224,6 @@ def dashboard():
     users.close()
     return ret
 
-class EmbedConfigForm(Form):
-    color = StringField("Color (hex code)")
-    title = StringField("Title")
-    desc = StringField("Description")
-    author_name = StringField("Author name")
-    author_url = StringField("Author URL")
-    provider_name = StringField("Site name")
-    provider_url = StringField("Site URL")
-
-
 @app.route("/dashboard/embed-conf/", methods=['GET', 'POST'])
 @login_required
 def embed_conf():
@@ -241,6 +232,14 @@ def embed_conf():
     embed = user['embed']
     embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '', 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
     current = embed
+    class EmbedConfigForm(Form):
+        color = StringField("Color (hex code)", default=embed['color'])
+        title = TextAreaField("Title", default=embed['title'])
+        desc = TextAreaField("Description", default=embed['desc'])
+        author_name = TextAreaField("Author name", default=embed['author_name'])
+        author_url = StringField("Author URL", default=embed['author_url'])
+        provider_name = TextAreaField("Site name", default=embed['provider_name'])
+        provider_url = StringField("Site URL", default=embed['provider_url'])
     form = EmbedConfigForm(request.form)
     if request.method == 'POST' and form.validate():
         if form.color.data != "":
