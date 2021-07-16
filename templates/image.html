@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ url_for('img_raw', id=img_id) }}">
+    <meta name="twitter:image:src" content="{{ url_for('img_raw', id=img_id) }}">
+    <meta property="og:image" content="{{ url_for('img_raw', id=img_id) }}">
+    {% if embed_color_on %}
+    <meta name="theme-color" content="{{ embed_color }}">
+    {% endif %}
+    {% if embed_title_on %}
+    <meta property="og:title" content="{{ embed_title }}">
+    <meta name="twitter:title" content="{{ embed_title }}">
+    {% endif %}
+    {% if embed_desc_on %}
+    <meta name="twitter:description" content="{{ embed_desc }}">
+    <meta property="og:description" content="{{ embed_desc }}">
+    {% endif %}
+    {% if embed_adv %}
+    <link type="application/json+oembed" href="{{ url_for('get_embed', id=img_id, _external=True) }}">
+    {% endif %}
+    <title>{{ name }} v{{ version }} | {{ img_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.0.2/dist/css/bootstrap-night.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--bs-gray);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('home') }}">{{ name }}</a>
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('home') }}">home</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        {{message}}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="d-flex justify-content-center align-items-center">
+            <div class="card text-center">
+                <img src="{{ url_for('img_raw', id=img_id) }}" class="card-img-top" alt="Image">
+                <div class="card-body">
+                    <h1 class="card-title">{{ img_name + img_ext }}</h1>
+                    <p class="card-text" style="font-size: 1.5rem;">
+                        <strong>ID:</strong> {{ img_id }}
+                        <br>
+                        <strong>Size:</strong> {{ size_kb }} KB ({{ size_mb }} MB)
+                        <br>
+                        <strong>Uploaded by:</strong> {{ uploaded_by }} (UID {{ uploaded_uid }})
+                        <br>
+                        <strong>Uploaded at:</strong> {{ uploaded_at }} UTC
+                    </p>
+                    <a href="{{ url_for('img_raw', id=img_id) }}" class="btn btn-primary">View raw</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous">
+    </script>
+</body>
+
+</html>

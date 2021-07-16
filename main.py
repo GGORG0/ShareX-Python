@@ -1,10 +1,13 @@
 from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, make_response
-from wtforms import Form, TextField, PasswordField, validators
+import re
+import time
+from wtforms import Form, StringField, PasswordField, validators
 from passlib.hash import sha256_crypt
 from functools import wraps
 import json
 import os
 import shelve
+import datetime
 import string
 import secrets
 import random
@@ -42,6 +45,13 @@ def login_required(func):
     def wrap(*args, **kwargs):
         if 'logged_in' in session:
             if session['logged_in'] == True:
+                if 'uid' in session:
+                    users = shelve.open(os.path.join("config", "users.shelve"))
+                    if str(session['uid']) not in users.keys():
+                        users.close()
+                        del session['uid']
+                        return redirect(url_for("logout"))
+                    users.close()
                 return func(*args, **kwargs)
         else:
             flash("You need to login first")
@@ -53,22 +63,25 @@ def login_required(func):
 def upload():
     users = shelve.open(os.path.join("config", "users.shelve"))
     attributes = request.form.to_dict(flat=False)
-    if 'username' not in list(attributes.keys()) or 'key' not in list(attributes.keys()):
+    if 'uid' not in list(attributes.keys()) or 'key' not in list(attributes.keys()):
         users.close()
         return "Required value not in request attributes", 400
     elif 'image' not in list(request.files.to_dict(flat=False).keys()):
         users.close()
         return "'image' not provided", 400
 
-    if attributes['username'][0] not in list(users.keys()):
+    if attributes['uid'][0] not in list(users.keys()):
         users.close()
         return "User not found", 401
-    elif attributes['key'][0] != users[attributes['username'][0]]['key']:
+    elif attributes['key'][0] != users[attributes['uid'][0]]['key']:
         users.close()
         return "Wrong upload key", 401
     else:
+        user = users[attributes['uid'][0]]
+        images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
         file = request.files['image']
         name, ext = os.path.splitext(file.filename)
+        # filename = file.filename
         file.flush()
         size = os.fstat(file.fileno()).st_size
         if ext not in config['allowed_extensions']:
@@ -83,23 +96,106 @@ def upload():
         file_without_exif = Image.new(image.mode, image.size)
         file_without_exif.putdata(data)
 
-        if users[attributes['username'][0]]['random_filename']:
-            filename = secrets.token_urlsafe(5) + ext
-        else:
-            filename = name + ext
-        file_without_exif.save(os.path.join(config['storage_folder'], filename))
-        user = users[attributes['username'][0]]
-        user['images'].append(filename)
-        users[attributes['username'][0]] = user
+        img_id = secrets.token_urlsafe(5)
+        filename = img_id + ext
+        if not os.path.exists(os.path.join(config['storage_folder'], str(user['uid']))):
+            os.mkdir(os.path.join(config['storage_folder'], str(user['uid'])))
+        file_without_exif.save(os.path.join(config['storage_folder'], str(user['uid']), filename))
+        user = users[attributes['uid'][0]]
+        img_data = {"name": name, "id": img_id, "ext": ext, "upload_time": round(time.time()), "size_b": size, "user": str(user['uid']),
+                    "embed": user['embed']}
+        user['images'].append(img_id + ext)
+        user['storage_used'] += size
+        users[attributes['uid'][0]] = user
+        images[img_id] = img_data
+        images.close()
         users.close()
-        return json.dumps({"url": url_for("get_img", name=filename, _external=True)}), 200
+        return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
-@app.route("/i/<name>", methods=['GET', 'DELETE'])
-def get_img(name):
+def process_embed(embed: dict, image: dict, user: dict):
+    embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '', 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
+
+    space = round(user['storage_used'] / (1024 * 1024), 2)
+
+    replace_dict = {'$user.name$': user['username'], '$user.uid$': str(user['uid']), '$user.email$': user['email'], 
+                    '$user.img_count$': len(user['images']), '$user.used_space$': space, '$img.name$': image['name'],
+                    '$img.id$': image['id'], '$img.ext$': image['ext'], '$img.uploaded_at.timestamp$': image['upload_time'],
+                    '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
+                    '$img.size$': str(image['size_b'] * 1024), '$host.name$': config['name'], '$host.motd$': config['motd']}
+    
+    for key, val in embed.items():
+        # embed[key] = val.translate(replace_dict)
+        for a, b in replace_dict.items():
+            embed[key] = val.replace(str(a), str(b))
+
+    return embed
+
+@app.route("/i/<id>", methods=['GET', 'DELETE'])
+def get_img(id):
     if request.method == 'GET':
-        return send_from_directory(config['storage_folder'], name)
-    os.remove(os.path.join(config["storage_folder"], name))
-    return "OK", 200
+        users = shelve.open(os.path.join("config", "users.shelve"))
+        images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+        image = images[id]
+        user = users[image['user']]
+        try:
+            embed = image['embed']
+        except KeyError:
+            embed = {}
+
+        embed = process_embed(embed, image, user)
+        embed_adv = embed['author_name'] != "" or embed['author_url'] != "" or embed['provider_name'] != "" or embed['provider_url'] != ""
+
+
+        ret = render_template("image.html", name=config['name'], version=ver, img_name=image['name'],
+                              img_id=image['id'], img_ext=image['ext'], size_kb=str(round(image['size_b'] / 1024, 2)), size_mb=str(round(image['size_b'] / (1024 * 1024), 2)), uploaded_by=user['username'],
+                              uploaded_uid=user['uid'], uploaded_at=datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
+                              embed_color=embed['color'], embed_title=embed['title'], embed_desc=embed['desc'], embed_adv=embed_adv)
+        images.close()
+        users.close()
+        return ret
+    else:
+        os.remove(os.path.join(config["storage_folder"], id))
+        return "OK", 200
+
+@app.route("/i/raw/<id>")
+def img_raw(id):
+    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+    img = images[id]
+    usr = img['user']
+    dir = os.path.join(config['storage_folder'], usr)
+    filename = img['id'] + img['ext']
+    images.close()
+    return send_from_directory(dir, filename)
+
+@app.route("/i/embed/<id>")
+def get_embed(id):
+    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+    users = shelve.open(os.path.join("config", "users.shelve"))
+    img = images[id]
+    usr = users[img['user']]
+    try:
+        embed = img['embed']
+    except KeyError:
+        embed = {}
+    
+    embed = process_embed(embed, img, usr)
+
+    em_json = {
+        'type': 'link',
+        'version': '1.0'
+    }
+    if embed['author_name'] != "":
+        em_json['author_name'] = embed['author_name']
+    if embed['author_url'] != "":
+        em_json['author_url'] = embed['author_url']
+    if embed['provider_name'] != "":
+        em_json['provider_name'] = embed['provider_name']
+    if embed['provider_url'] != "":
+        em_json['provider_url'] = embed['provider_url']
+
+    images.close()
+    users.close()
+    return jsonify(em_json)
 
 @app.route("/")
 def home():
@@ -117,34 +213,70 @@ def favicon():
 @login_required
 def dashboard():
     users = shelve.open(os.path.join("config", "users.shelve"))
-    try:
-        user = users[session['username']]
-    except KeyError:
-        users.close()
-        return redirect(url_for("logout"))
-    space = sum(
-        round(
-            os.stat(os.path.join(config['storage_folder'], file)).st_size
-            / (1024 * 1024),
-            2,
-        )
-        for file in list(user['images'])
-    )
+    user = users[str(session['uid'])]
+    space = round(user['storage_used'] / (1024 * 1024), 2)
     ret = render_template("dashboard.html", name=config['name'], version=ver, motd=config['motd'],
                            username=user['username'], img_count=len(user['images']), uid=user['uid'],
                            key=user['key'], space=space)
     users.close()
     return ret
 
+class EmbedConfigForm(Form):
+    color = StringField("Color (hex code)")
+    title = StringField("Title")
+    desc = StringField("Description")
+    author_name = StringField("Author name")
+    author_url = StringField("Author URL")
+    provider_name = StringField("Site name")
+    provider_url = StringField("Site URL")
+
+
+@app.route("/dashboard/embed-conf/", methods=['GET', 'POST'])
+@login_required
+def embed_conf():
+    users = shelve.open(os.path.join("config", "users.shelve"))
+    user = users[str(session['uid'])]
+    embed = user['embed']
+    embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '', 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
+    current = embed
+    form = EmbedConfigForm(request.form)
+    if request.method == 'POST' and form.validate():
+        if form.color.data != "":
+            regex = r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+            regex = re.compile(regex)
+            if regex.fullmatch(form.color.data):
+                embed['color'] = form.color.data
+            else:
+                flash("Color must be empty or a hex code!")
+        else:
+            embed['color'] = ""
+        embed['title'] = form.title.data
+        embed['desc'] = form.desc.data
+        embed['author_name'] = form.author_name.data
+        embed['author_url'] = form.author_url.data
+        embed['provider_name'] = form.provider_name.data
+        embed['provider_url'] = form.provider_url.data
+
+        user['embed'] = embed
+        users[str(session['uid'])] = user
+
+        flash("Embed preferences successfully set!")
+
+    users.close()
+    vars = ['$user.name$', '$user.uid$', '$user.email$', '$user.img_count$', '$user.used_space$', '$img.name$', '$img.id$', '$img.ext$', '$img.uploaded_at.timestamp$', '$img.uploaded_at.utc$', '$img.size$', '$host.name$', '$host.motd$']
+    return render_template("embed_conf.html", name=config['name'], version=ver, motd=config['motd'], form=form,
+                            username=user['username'], current=current, vars=vars)
+
+
 class LoginForm(Form):
-    username = TextField('Username', [validators.DataRequired()])
+    username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [
         validators.DataRequired(),
     ])
     
 class RegistrationForm(Form):
-    username = TextField('Username', [validators.Length(min=4, max=20)])
-    email = TextField('Email Address', [validators.Length(min=6, max=50)])
+    username = StringField('Username', [validators.Length(min=4, max=20)])
+    email = StringField('Email Address', [validators.Length(min=6, max=50)])
     password = PasswordField('New Password', [
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords must match')
@@ -152,7 +284,7 @@ class RegistrationForm(Form):
     confirm = PasswordField('Repeat Password', [validators.DataRequired()])
 
 @app.route("/dashboard/login/", methods=['GET', 'POST'])
-def login():
+def login():  # sourcery skip: merge-nested-ifs
     if 'logged_in' in session:
         if session['logged_in'] == True:
             return redirect(url_for("dashboard"))
@@ -161,14 +293,18 @@ def login():
         if request.method == 'POST' and form.validate():
             users = shelve.open(os.path.join("config", "users.shelve"))
             username = form.username.data
-            if username not in list(users.keys()):
-                flash("Invalid username or password")
-                users.close()
-                return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
+            valid = False
+            user = None
+            for usr in users.values():
+                if usr['username'] == username:
+                    if sha256_crypt.verify(form.password.data, usr['password_hash']):
+                        user = usr
+                        valid = True
+                        break
 
-            if sha256_crypt.verify(form.password.data, users[username]['password_hash']):
+            if valid:
                 session['logged_in'] = True
-                session['username'] = username
+                session['uid'] = usr['uid']
                 flash("Logged in successfully.")
                 users.close()
                 return redirect(url_for("dashboard"))
@@ -197,34 +333,26 @@ def register():
             users = shelve.open(os.path.join("config", "users.shelve"))
             username = form.username.data
             email = form.email.data
-            password = sha256_crypt.encrypt((str(form.password.data)))
+            password = sha256_crypt.hash((str(form.password.data)))
             if username in list(users.keys()):
                 flash("This username is already taken, please choose another")
                 users.close()
                 return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
             
-            if not os.path.exists(os.path.join("config", "latest_uid.txt")):
-                with open(os.path.join("config", "latest_uid.txt"), "w") as f:
-                    f.write("-1")
-            with open(os.path.join("config", "latest_uid.txt"), "r") as f:
-                try:
-                    latest_uid = int(f.read())
-                except ValueError:
-                    latest_uid = -1
-            with open(os.path.join("config", "latest_uid.txt"), "w") as f:
-                f.write(str(latest_uid + 1))
+            latest_uid = len(users) - 1
 
-            users[username] = {
+            users[str(latest_uid + 1)] = {
                 "username": username,
                 "email": email,
                 "password_hash": password,
                 "key": f"{username}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}",
-                "random_filename": True,
                 "uid": latest_uid + 1,
                 "images": [],
+                "embed": {},
+                "storage_used": 0
             }
             session['logged_in'] = True
-            session['username'] = username
+            session['uid'] = latest_uid + 1
             flash("Logged in successfully.")
             users.close()
             return redirect(url_for("dashboard"))
@@ -235,7 +363,7 @@ def register():
 @login_required
 def sharex_config():
     users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[session['username']]
+    user = users[str(session['uid'])]
     cfg = {
         "Version": "13.5.0",
         "Name": config['name'],
@@ -244,12 +372,12 @@ def sharex_config():
         "RequestURL": url_for("upload", _external=True),
         "Body": "MultipartFormData",
         "Arguments": {
-            "username": user['username'],
+            "uid": user['uid'],
             "key": user['key']
         },
         "FileFormName": "image",
         "URL": "$json:url$",
-        "ThumbnailURL": "$json:url$",
+        "ThumbnailURL": "$json:raw$",
         "DeletionURL": "$json:url$",
         "ErrorMessage": "$response$"
     } 
@@ -265,11 +393,7 @@ def sharex_config():
 @login_required
 def account():
     users = shelve.open(os.path.join("config", "users.shelve"))
-    try:
-        user = users[session['username']]
-    except KeyError:
-        users.close()
-        return redirect(url_for("logout"))
+    user = users[str(session['uid'])]
     ret = render_template("account.html", name=config['name'], version=ver, motd=config['motd'],
                            username=user['username'], uid=user['uid'], email=user['email'],
                            key=user['key'])
@@ -290,18 +414,14 @@ class ChangePasswordForm(Form):
 @login_required
 def change_password():
     users = shelve.open(os.path.join("config", "users.shelve"))
-    try:
-        user = users[session['username']]
-    except KeyError:
-        users.close()
-        return redirect(url_for("logout"))
+    user = users[str(session['uid'])]
 
     form = ChangePasswordForm(request.form)
     if request.method == 'POST' and form.validate():
         if sha256_crypt.verify(form.old_password.data, user['password_hash']):
             password = sha256_crypt.encrypt((str(form.password.data)))
             user['password_hash'] = password
-            users[session['username']] = user
+            users[str(session['uid'])] = user
             flash("Password changed successfully.")
             users.close()
             return redirect(url_for("dashboard"))
@@ -318,16 +438,12 @@ def change_password():
 @login_required
 def delete_account():
     users = shelve.open(os.path.join("config", "users.shelve"))
-    try:
-        user = users[session['username']]
-    except KeyError:
-        users.close()
-        return redirect(url_for("logout"))
+    user = users[str(session['uid'])]
 
     for file in list(user['images']):
         os.remove(os.path.join(config['storage_folder'], file))
     
-    del users[session['username']]
+    del users[str(session['uid'])]
 
     users.close()
     flash("Account deleted successfully")
@@ -337,14 +453,10 @@ def delete_account():
 @login_required
 def regenerate_key():
     users = shelve.open(os.path.join("config", "users.shelve"))
-    try:
-        user = users[session['username']]
-    except KeyError:
-        users.close()
-        return redirect(url_for("logout"))
+    user = users[str(session['uid'])]
 
     user['key'] = f"{user['username']}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}"
-    users[session['username']] = user
+    users[str(session['uid'])] = user
 
     users.close()
     flash("Key regenerated successfully, please re-download your config!")
