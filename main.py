@@ -121,7 +121,7 @@ def process_embed(embed: dict, image: dict, user: dict):
                     '$user.img_count$': len(user['images']), '$user.used_space$': space, '$img.name$': image['name'],
                     '$img.id$': image['id'], '$img.ext$': image['ext'], '$img.uploaded_at.timestamp$': image['upload_time'],
                     '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
-                    '$img.size$': str(image['size_b'] * 1024), '$host.name$': config['name'], '$host.motd$': config['motd']}
+                    '$img.size$': str(image['size_b'] / 1024), '$host.name$': config['name'], '$host.motd$': config['motd']}
     
     for a, b in replace_dict.items():
         embed['title'] = embed['title'].replace(str(a), str(b))
