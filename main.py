@@ -135,33 +135,29 @@ def process_embed(embed: dict, image: dict, user: dict):
 
 @app.route("/i/<id>", methods=['GET', 'DELETE'])
 def get_img(id):
-    if request.method == 'GET':
-        users = shelve.open(os.path.join("config", "users.shelve"))
-        images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
-        image = images[id]
-        user = users[image['user']]
-        try:
-            embed = image['embed']
-        except KeyError:
-            embed = {}
+    users = shelve.open(os.path.join("config", "users.shelve"))
+    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+    image = images[id]
+    user = users[image['user']]
+    try:
+        embed = image['embed']
+    except KeyError:
+        embed = {}
 
-        embed = process_embed(embed, image, user)
-        embed_adv = embed['author_name'] != "" or embed['author_url'] != "" or embed['provider_name'] != "" or embed['provider_url'] != ""
+    embed = process_embed(embed, image, user)
+    embed_adv = embed['author_name'] != "" or embed['author_url'] != "" or embed['provider_name'] != "" or embed['provider_url'] != ""
 
-        color_on = embed['color'] != ""
-        title_on = embed['title'] != ""
-        desc_on = embed['desc'] != ""
+    color_on = embed['color'] != ""
+    title_on = embed['title'] != ""
+    desc_on = embed['desc'] != ""
 
-        ret = render_template("image.html", name=config['name'], version=ver, img_name=image['name'],
-                              img_id=image['id'], img_ext=image['ext'], size_kb=str(round(image['size_b'] / 1024, 2)), size_mb=str(round(image['size_b'] / (1024 * 1024), 2)), uploaded_by=user['username'],
-                              uploaded_uid=user['uid'], uploaded_at=datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
-                              embed_color=embed['color'], embed_title=embed['title'], embed_desc=embed['desc'], embed_adv=embed_adv, embed_color_on=color_on, embed_title_on=title_on, embed_desc_on=desc_on)
-        images.close()
-        users.close()
-        return ret
-    else:
-        os.remove(os.path.join(config["storage_folder"], id))
-        return "OK", 200
+    ret = render_template("image.html", name=config['name'], version=ver, img_name=image['name'],
+                            img_id=image['id'], img_ext=image['ext'], size_kb=str(round(image['size_b'] / 1024, 2)), size_mb=str(round(image['size_b'] / (1024 * 1024), 2)), uploaded_by=user['username'],
+                            uploaded_uid=user['uid'], uploaded_at=datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
+                            embed_color=embed['color'], embed_title=embed['title'], embed_desc=embed['desc'], embed_adv=embed_adv, embed_color_on=color_on, embed_title_on=title_on, embed_desc_on=desc_on)
+    images.close()
+    users.close()
+    return ret
 
 @app.route("/i/raw/<id>")
 def img_raw(id):
@@ -384,7 +380,6 @@ def sharex_config():
         "FileFormName": "image",
         "URL": "$json:url$",
         "ThumbnailURL": "$json:raw$",
-        "DeletionURL": "$json:url$",
         "ErrorMessage": "$response$"
     } 
     resp = make_response(jsonify(cfg))
@@ -497,6 +492,9 @@ def delete_image(id):
 
     if id not in list(images.keys()):
         flash("Image not found!")
+        return redirect(url_for("gallery"))
+    if id + images[id]['ext'] not in user['images']:
+        flash("Image not owned by user!")
         return redirect(url_for("gallery"))
 
     user_imgs = user['images']
