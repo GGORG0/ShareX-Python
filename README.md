@@ -1,5 +1,7 @@
 # ShareX-Python
 This is a ShareX uploader server written in Python Flask, also featuring a web frontend and a dashboard.
+## Hosted instance
+There is a 24/7, up-to-date hosted by me instance of it named SharX alavilable over at https://sharx.tk
 ## Config
 1. First, create a `config` direcory.
 2. There is a `config.json.example` file, copy it as `config/config.json`
