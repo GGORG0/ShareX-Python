@@ -336,7 +336,7 @@ def register():
             username = form.username.data
             email = form.email.data
             password = sha256_crypt.hash((str(form.password.data)))
-            for usr in users.items():
+            for usr in users.values():
                 if username == usr['username']:
                     flash("This username is already taken, please choose another")
                     users.close()
