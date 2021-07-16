@@ -468,5 +468,44 @@ def regenerate_key():
     flash("Key regenerated successfully, please re-download your config!")
     return redirect(url_for("dashboard"))
 
+
+@app.route("/dashboard/gallery/")
+@login_required
+def gallery():
+    users = shelve.open(os.path.join("config", "users.shelve"))
+    user = users[str(session['uid'])]
+    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+
+    imgs = []
+    for img in user['images']:
+        img, _ = os.path.splitext(img)
+        imgs.append(images[img])
+
+    ret = render_template("gallery.html", name=config['name'], version=ver, motd=config['motd'], username=user['username'], imgs=imgs)
+    users.close()
+    images.close()
+    return ret
+    
+@app.route("/dashboard/gallery/delete-image/<id>/")
+@login_required
+def delete_image(id):
+    users = shelve.open(os.path.join("config", "users.shelve"))
+    user = users[str(session['uid'])]
+    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+
+    if id not in list(images.keys()):
+        flash("Image not found!")
+        return redirect(url_for("gallery"))
+
+    user_imgs = user['images']
+    os.remove(os.path.join(config['storage_folder'], str(user['uid']), id + images[id]['ext']))
+    user_imgs.remove(id + images[id]['ext'])
+    user['images'] = user_imgs
+    users[str(user['uid'])] = user
+    del images[id]
+
+    flash("Image deleted successfully")
+    return redirect(url_for("gallery"))
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0")

@@ -1,0 +1,26 @@
+{% extends "dashboard_header.html" %}
+
+{% block main %}
+
+<h1>{{ name }} v{{ version }} - Dashboard (Image gallery)</h1>
+<h2>Welcome, <strong>{{ username }}</strong>!</h2>
+<h3>Here you can view and delete your images</h3>
+<div class="container">
+    <div class="row">
+        {% for img in imgs %}
+        <div class="col">
+            <div class="card text-center" style="max-width: 30rem;">
+                <img src="{{ url_for('img_raw', id=img['id']) }}" class="card-img-top" alt="Image">
+                <div class="card-body">
+                    <h2 class="card-title">{{ img['name'] + img['ext'] }}</h2>
+                    <h3 class="card-title">{{ img['id'] }}</h3>
+                    <a href="{{ url_for('get_img', id=img['id']) }}" class="btn btn-primary">More info</a>
+                    <a href="{{ url_for('delete_image', id=img['id']) }}" class="btn btn-primary" style="background-color: var(--bs-red);">Delete</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
