@@ -12,8 +12,8 @@
             <div class="card text-center" style="max-width: 25rem;">
                 <img src="{{ url_for('img_raw', id=img['id']) }}" class="card-img-top" alt="Image">
                 <div class="card-body">
-                    <h2 class="card-title">{{ img['name'] + img['ext'] }}</h2>
-                    <h3 class="card-title">{{ img['id'] }}</h3>
+                    <h3 class="card-title">{{ img['name'] + img['ext'] }}</h3>
+                    <h4 class="card-title">{{ img['id'] }}</h4>
                     <a href="{{ url_for('get_img', id=img['id']) }}" class="btn btn-primary">More info</a>
                     <a href="{{ url_for('delete_image', id=img['id']) }}" class="btn btn-primary" style="background-color: var(--bs-red);">Delete</a>
                 </div>
