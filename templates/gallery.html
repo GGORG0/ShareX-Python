@@ -9,7 +9,7 @@
     <div class="row">
         {% for img in imgs %}
         <div class="col">
-            <div class="card text-center" style="max-width: 30rem;">
+            <div class="card text-center" style="max-width: 25rem;">
                 <img src="{{ url_for('img_raw', id=img['id']) }}" class="card-img-top" alt="Image">
                 <div class="card-body">
                     <h2 class="card-title">{{ img['name'] + img['ext'] }}</h2>
