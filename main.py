@@ -341,7 +341,7 @@ def register():
                 users.close()
                 return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
             
-            latest_uid = list(users.kesy())[-1]
+            latest_uid = list(users.keys())[-1]
 
             users[str(latest_uid + 1)] = {
                 "username": username,
