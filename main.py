@@ -123,10 +123,13 @@ def process_embed(embed: dict, image: dict, user: dict):
                     '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
                     '$img.size$': str(image['size_b'] * 1024), '$host.name$': config['name'], '$host.motd$': config['motd']}
     
-    for key, val in embed.items():
-        # embed[key] = val.translate(replace_dict)
-        for a, b in replace_dict.items():
-            embed[key] = val.replace(str(a), str(b))
+    for a, b in replace_dict.items():
+        embed['title'] = embed['title'].replace(str(a), str(b))
+        embed['desc'] = embed['desc'].replace(str(a), str(b))
+        embed['author_name'] = embed['author_name'].replace(str(a), str(b))
+        embed['author_url'] = embed['author_url'].replace(str(a), str(b))
+        embed['provider_name'] = embed['provider_name'].replace(str(a), str(b))
+        embed['provider_url'] = embed['provider_url'].replace(str(a), str(b))
 
     return embed
 
