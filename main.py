@@ -145,6 +145,9 @@ def get_img(id):
         embed = process_embed(embed, image, user)
         embed_adv = embed['author_name'] != "" or embed['author_url'] != "" or embed['provider_name'] != "" or embed['provider_url'] != ""
 
+        color_on = embed['color'] != ""
+        title_on = embed['title'] != ""
+        desc_on = embed['desc'] != ""
 
         ret = render_template("image.html", name=config['name'], version=ver, img_name=image['name'],
                               img_id=image['id'], img_ext=image['ext'], size_kb=str(round(image['size_b'] / 1024, 2)), size_mb=str(round(image['size_b'] / (1024 * 1024), 2)), uploaded_by=user['username'],
