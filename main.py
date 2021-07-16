@@ -501,6 +501,7 @@ def delete_image(id):
     os.remove(os.path.join(config['storage_folder'], str(user['uid']), id + images[id]['ext']))
     user_imgs.remove(id + images[id]['ext'])
     user['images'] = user_imgs
+    user['storage_used'] -= images[id]['size_b']
     users[str(user['uid'])] = user
     del images[id]
 
