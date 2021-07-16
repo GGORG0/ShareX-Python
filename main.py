@@ -336,10 +336,11 @@ def register():
             username = form.username.data
             email = form.email.data
             password = sha256_crypt.hash((str(form.password.data)))
-            if username in list(users.keys()):
-                flash("This username is already taken, please choose another")
-                users.close()
-                return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
+            for usr in users.items():
+                if username == usr['username']:
+                    flash("This username is already taken, please choose another")
+                    users.close()
+                    return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
             
             latest_uid = int(list(users.keys())[-1])
 
