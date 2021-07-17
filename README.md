@@ -22,3 +22,8 @@ There is a 24/7, up-to-date hosted by me instance of it named SharX available ov
 5. Install the requirements using `pip install -r requirements.txt`
 6. Start the host using a WSGI server and enjoy! A startup file for *Phusion Passenger* is included by default.
 
+## TODO
+- Domains
+- Invisible links
+- Uploading from the dashboard
+- URL Shortener
