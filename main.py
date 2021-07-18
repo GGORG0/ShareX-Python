@@ -213,7 +213,7 @@ def favicon():
     return send_from_directory("config", "favicon.ico")
 
 @app.route("/logo.png")
-def favicon():
+def logo():
     return send_from_directory("config", "logo.png")
 
 @app.route("/dashboard/")
