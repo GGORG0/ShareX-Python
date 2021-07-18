@@ -19,8 +19,9 @@ There is a 24/7, up-to-date hosted by me instance of it named SharX available ov
     - `discord`
         This is the invite **code** for your Discord server. That means that if my invite is `https://discord.gg/abcdef`, the code will be `abcdef`
 4. Add a favicon as `config/favicon.ico`
-5. Install the requirements using `pip install -r requirements.txt`
-6. Start the host using a WSGI server and enjoy! A startup file for *Phusion Passenger* is included by default.
+5. Add a logo as `config/logo.png`
+6. Install the requirements using `pip install -r requirements.txt`
+7. Start the host using a WSGI server and enjoy! A startup file for *Phusion Passenger* is included by default.
 
 ## TODO
 - Domains
