@@ -21,7 +21,7 @@ There is a 24/7, up-to-date hosted by me instance of it named SharX available ov
 4. Add a favicon as `config/favicon.ico`
 5. Add a logo as `config/logo.png`
 6. Install the requirements using `pip install -r requirements.txt`
-7. Start the host using a WSGI server and enjoy! A startup file for *Phusion Passenger* is included by default.
+7. Start the host using a WSGI server and enjoy! A startup file for *Phusion Passenger* and other common WSGI servers is included by default.
 
 ## TODO
 - Domains
