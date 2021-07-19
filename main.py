@@ -291,7 +291,7 @@ def logo():
 def dashboard():
     user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
-    images = query_db('SELECT * FROM users WHERE user = ?',
+    images = query_db('SELECT * FROM images WHERE user = ?',
                     [user['uid']])
     space = round(user['storage_used'] / (1024 * 1024), 2)
     return render_template(
