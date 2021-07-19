@@ -120,7 +120,7 @@ def upload():
         return "'image' not provided", 400
 
     user = query_db('SELECT * FROM users WHERE uid = ?',
-                    [attributes['uid']], one=True)
+                    [attributes['uid'][0]], one=True)
 
     if user is None:
         return "User not found", 401
@@ -150,9 +150,9 @@ def upload():
         config['storage_folder'], user['uid'], filename))
     db = get_db()
     db.cursor().execute(
-        "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] + size, session['uid']])
+        "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] + size, attributes['uid'][0]])
     db.cursor().execute("INSERT INTO images VALUES (?, ?, ?, ?, ?, ?)", [
-        name, img_id, ext, round(time.time()), size, session['uid']])
+        name, img_id, ext, round(time.time()), size, attributes['uid'][0]])
     db.commit()
     return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
