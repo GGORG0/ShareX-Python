@@ -120,7 +120,7 @@ def upload():
         return "'image' not provided", 400
 
     user = query_db('SELECT * FROM users WHERE uid = ?',
-                    [session['uid']], one=True)
+                    [attributes['uid']], one=True)
 
     if user is None:
         return "User not found", 401
