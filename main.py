@@ -147,7 +147,7 @@ def upload():
     if not os.path.exists(os.path.join(config['storage_folder'], str(user['uid']))):
         os.mkdir(os.path.join(config['storage_folder'], str(user['uid'])))
     file_without_exif.save(os.path.join(
-        config['storage_folder'], user['uid'], filename))
+        config['storage_folder'], str(user['uid']), filename))
     db = get_db()
     db.cursor().execute(
         "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] + size, attributes['uid'][0]])
