@@ -66,13 +66,14 @@ def setup_files():
     if not os.path.exists(config['storage_folder']):
         os.mkdir(config['storage_folder'])
 
-    db = get_db()
-    db.cursor().execute(
-        "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)")
-    db.cursor().execute(
-        "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
-    db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
-    db.commit()
+    with app.app_context():
+        db = get_db()
+        db.cursor().execute(
+            "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)")
+        db.cursor().execute(
+            "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
+        db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
+        db.commit()
 
 
 setup_files()
