@@ -49,6 +49,8 @@ def query_db(query, args=(), one=False):
 
 
 def setup_files():
+    global config
+    global ver
     if not os.path.exists("config"):
         os.mkdir("config")
     if not os.path.exists(os.path.join("config", "config.json")):
