@@ -1,5 +1,5 @@
 from typing import Text
-from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, make_response
+from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, make_response, g
 import re
 import time
 from wtforms import Form, StringField, PasswordField, validators, TextAreaField
@@ -7,39 +7,86 @@ from passlib.hash import sha256_crypt
 from functools import wraps
 import json
 import os
-import shelve
 import datetime
 import string
 import secrets
+import sqlite3
 import random
 from PIL import Image
 import shutil
 
 app = Flask(__name__)
 
-if not os.path.exists("config"):
-    os.mkdir("config")
-if not os.path.exists(os.path.join("config","config.json")):
-    shutil.copy("config.json.example", os.path.join("config","config.json"))
-with open(os.path.join("config","config.json"), "r") as f:
-    config = json.load(f)
-with open("version.txt", "r") as f:
-    ver = f.read()
-if not os.path.exists(os.path.join("config","secret_key.txt")):
-    with open(os.path.join("config","secret_key.txt"), "wb") as f:
-        f.write(os.urandom(16))
-with open(os.path.join("config","secret_key.txt"), "rb") as f:
-    app.config['SECRET_KEY'] = f.read()
-if not os.path.exists(config['storage_folder']):
-    os.mkdir(config['storage_folder'])
+with open("pid.txt", "w") as f:
+    f.write(os.getpid())
+
+config = {}
+ver = ""
+
+DATABASE = os.path.join("config", "data.db")
+
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+    db.row_factory = sqlite3.Row
+    return db
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    return (rv[0] if rv else None) if one else rv
+
+
+def setup_files():
+    if not os.path.exists("config"):
+        os.mkdir("config")
+    if not os.path.exists(os.path.join("config", "config.json")):
+        shutil.copy("config.json.example",
+                    os.path.join("config", "config.json"))
+    with open(os.path.join("config", "config.json"), "r") as f:
+        config = json.load(f)
+    with open("version.txt", "r") as f:
+        ver = f.read()
+    if not os.path.exists(os.path.join("config", "secret_key.txt")):
+        with open(os.path.join("config", "secret_key.txt"), "wb") as f:
+            f.write(os.urandom(16))
+    with open(os.path.join("config", "secret_key.txt"), "rb") as f:
+        app.config['SECRET_KEY'] = f.read()
+    if not os.path.exists(config['storage_folder']):
+        os.mkdir(config['storage_folder'])
+
+    db = get_db()
+    db.cursor().execute(
+        "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)")
+    db.cursor().execute(
+        "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
+    db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
+    db.commit()
+
+
+setup_files()
+
 
 @app.errorhandler(404)
 def not_found(e):
     return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error=e)
 
+
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html", name=config['name'], version=ver, motd=config['motd'], error=e)
+
 
 def login_required(func):
     @wraps(func)
@@ -47,12 +94,12 @@ def login_required(func):
         if 'logged_in' in session:
             if session['logged_in'] == True:
                 if 'uid' in session:
-                    users = shelve.open(os.path.join("config", "users.shelve"))
-                    if str(session['uid']) not in users.keys():
-                        users.close()
+                    user = query_db('SELECT * FROM users WHERE uid = ?',
+                                    [session['uid']], one=True)
+                    if user is None:
                         del session['uid']
                         return redirect(url_for("logout"))
-                    users.close()
+
                 return func(*args, **kwargs)
         else:
             flash("You need to login first")
@@ -60,70 +107,66 @@ def login_required(func):
 
     return wrap
 
+
 @app.route("/upload", methods=['POST'])
 def upload():
-    users = shelve.open(os.path.join("config", "users.shelve"))
     attributes = request.form.to_dict(flat=False)
     if 'uid' not in list(attributes.keys()) or 'key' not in list(attributes.keys()):
-        users.close()
         return "Required value not in request attributes", 400
     elif 'image' not in list(request.files.to_dict(flat=False).keys()):
-        users.close()
         return "'image' not provided", 400
 
-    if attributes['uid'][0] not in list(users.keys()):
-        users.close()
+    user = query_db('SELECT * FROM users WHERE uid = ?',
+                    [session['uid']], one=True)
+
+    if user is None:
         return "User not found", 401
-    elif attributes['key'][0] != users[attributes['uid'][0]]['key']:
-        users.close()
+
+    if attributes['key'][0] != user['key']:
         return "Wrong upload key", 401
-    else:
-        user = users[attributes['uid'][0]]
-        images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
-        file = request.files['image']
-        name, ext = os.path.splitext(file.filename)
-        # filename = file.filename
-        file.flush()
-        size = os.fstat(file.fileno()).st_size
-        if ext not in config['allowed_extensions']:
-            users.close()
-            return "Unsupported file type", 415
-        elif size > 6000000:
-            users.close()
-            return 'File size too large', 400
+    file = request.files['image']
+    name, ext = os.path.splitext(file.filename)
+    # filename = file.filename
+    file.flush()
+    size = os.fstat(file.fileno()).st_size
+    if ext not in config['allowed_extensions']:
+        return "Unsupported file type", 415
+    elif size > 6000000:
+        return 'File size too large', 400
 
-        image = Image.open(file)
-        data = list(image.getdata())
-        file_without_exif = Image.new(image.mode, image.size)
-        file_without_exif.putdata(data)
+    image = Image.open(file)
+    data = list(image.getdata())
+    file_without_exif = Image.new(image.mode, image.size)
+    file_without_exif.putdata(data)
 
-        img_id = secrets.token_urlsafe(5)
-        filename = img_id + ext
-        if not os.path.exists(os.path.join(config['storage_folder'], str(user['uid']))):
-            os.mkdir(os.path.join(config['storage_folder'], str(user['uid'])))
-        file_without_exif.save(os.path.join(config['storage_folder'], str(user['uid']), filename))
-        user = users[attributes['uid'][0]]
-        img_data = {"name": name, "id": img_id, "ext": ext, "upload_time": round(time.time()), "size_b": size, "user": str(user['uid']),
-                    "embed": user['embed']}
-        user['images'].append(img_id + ext)
-        user['storage_used'] += size
-        users[attributes['uid'][0]] = user
-        images[img_id] = img_data
-        images.close()
-        users.close()
-        return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
+    img_id = secrets.token_urlsafe(5)
+    filename = img_id + ext
+    if not os.path.exists(os.path.join(config['storage_folder'], user['uid'])):
+        os.mkdir(os.path.join(config['storage_folder'], user['uid']))
+    file_without_exif.save(os.path.join(
+        config['storage_folder'], user['uid'], filename))
+    db = get_db()
+    db.cursor().execute(
+        "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] + size, session['uid']])
+    db.cursor().execute("INSERT INTO images VALUES (?, ?, ?, ?, ?, ?)", [
+        name, img_id, ext, round(time.time()), size, session['uid']])
+    db.commit()
+    return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
+
 
 def process_embed(embed: dict, image: dict, user: dict):
-    embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '', 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
+    # sourcery skip: extract-method
+    embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '',
+                'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
 
     space = round(user['storage_used'] / (1024 * 1024), 2)
 
-    replace_dict = {'$user.name$': user['username'], '$user.uid$': str(user['uid']), '$user.email$': user['email'], 
+    replace_dict = {'$user.name$': user['username'], '$user.uid$': user['uid'], '$user.email$': user['email'],
                     '$user.img_count$': len(user['images']), '$user.used_space$': space, '$img.name$': image['name'],
                     '$img.id$': image['id'], '$img.ext$': image['ext'], '$img.uploaded_at.timestamp$': image['upload_time'],
                     '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
                     '$img.size$': str(round(image['size_b'] / 1024, 2)), '$host.name$': config['name'], '$host.motd$': config['motd']}
-    
+
     for a, b in replace_dict.items():
         embed['title'] = embed['title'].replace(str(a), str(b))
         embed['desc'] = embed['desc'].replace(str(a), str(b))
@@ -134,15 +177,17 @@ def process_embed(embed: dict, image: dict, user: dict):
 
     return embed
 
+
 @app.route("/i/<id>", methods=['GET', 'DELETE'])
 def get_img(id):
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
-    image = images[id]
-    user = users[image['user']]
-    try:
-        embed = image['embed']
-    except KeyError:
+    image = query_db('SELECT * FROM images WHERE id = ?',
+                     [id], one=True)
+    user = query_db('SELECT * FROM users WHERE uid = ?',
+                    [image['user']], one=True)
+    embed = query_db('SELECT * FROM embeds WHERE user = ?',
+                     [image['user']], one=True)
+
+    if embed is None:
         embed = {}
 
     embed = process_embed(embed, image, user)
@@ -152,36 +197,55 @@ def get_img(id):
     title_on = embed['title'] != ""
     desc_on = embed['desc'] != ""
 
-    ret = render_template("image.html", name=config['name'], version=ver, img_name=image['name'],
-                            img_id=image['id'], img_ext=image['ext'], size_kb=str(round(image['size_b'] / 1024, 2)), size_mb=str(round(image['size_b'] / (1024 * 1024), 2)), uploaded_by=user['username'],
-                            uploaded_uid=user['uid'], uploaded_at=datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
-                            embed_color=embed['color'], embed_title=embed['title'], embed_desc=embed['desc'], embed_adv=embed_adv, embed_color_on=color_on, embed_title_on=title_on, embed_desc_on=desc_on)
-    images.close()
-    users.close()
-    return ret
+    return render_template(
+        "image.html",
+        name=config['name'],
+        version=ver,
+        img_name=image['name'],
+        img_id=image['id'],
+        img_ext=image['ext'],
+        size_kb=str(round(image['size_b'] / 1024, 2)),
+        size_mb=str(round(image['size_b'] / (1024 * 1024), 2)),
+        uploaded_by=user['username'],
+        uploaded_uid=user['uid'],
+        uploaded_at=datetime.datetime.utcfromtimestamp(
+            image['upload_time']
+        ).strftime("%d.%m.%Y %H:%M"),
+        embed_color=embed['color'],
+        embed_title=embed['title'],
+        embed_desc=embed['desc'],
+        embed_adv=embed_adv,
+        embed_color_on=color_on,
+        embed_title_on=title_on,
+        embed_desc_on=desc_on,
+    )
+
 
 @app.route("/i/raw/<id>")
 def img_raw(id):
-    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
-    img = images[id]
+    img = query_db('SELECT * FROM images WHERE id = ?',
+                   [id], one=True)
     usr = img['user']
     dir = os.path.join(config['storage_folder'], usr)
     filename = img['id'] + img['ext']
-    images.close()
+
     return send_from_directory(dir, filename)
+
 
 @app.route("/i/embed/<id>")
 def get_embed(id):
-    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    img = images[id]
-    usr = users[img['user']]
-    try:
-        embed = img['embed']
-    except KeyError:
+    image = query_db('SELECT * FROM images WHERE id = ?',
+                     [id], one=True)
+    user = query_db('SELECT * FROM users WHERE uid = ?',
+                    [image['user']], one=True)
+
+    embed = query_db('SELECT * FROM embeds WHERE user = ?',
+                     [image['user']], one=True)
+
+    if embed is None:
         embed = {}
-    
-    embed = process_embed(embed, img, usr)
+
+    embed = process_embed(embed, image, user)
 
     em_json = {
         'type': 'link',
@@ -196,53 +260,69 @@ def get_embed(id):
     if embed['provider_url'] != "":
         em_json['provider_url'] = embed['provider_url']
 
-    images.close()
-    users.close()
     return jsonify(em_json)
+
 
 @app.route("/")
 def home():
     return render_template("index.html", name=config['name'], version=ver, motd=config['motd'])
 
+
 @app.route("/discord/")
 def discord():
     return redirect(f"https://discord.gg/{config['discord']}")
+
 
 @app.route("/favicon.ico")
 def favicon():
     return send_from_directory("config", "favicon.ico")
 
+
 @app.route("/logo.png")
 def logo():
     return send_from_directory("config", "logo.png")
 
+
 @app.route("/dashboard/")
 @login_required
 def dashboard():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
+    user = query_db('SELECT * FROM users WHERE uid = ?',
+                    [session['uid']], one=True)
     space = round(user['storage_used'] / (1024 * 1024), 2)
-    ret = render_template("dashboard.html", name=config['name'], version=ver, motd=config['motd'],
-                           username=user['username'], img_count=len(user['images']), uid=user['uid'],
-                           key=user['key'], space=space)
-    users.close()
-    return ret
+    return render_template(
+        "dashboard.html",
+        name=config['name'],
+        version=ver,
+        motd=config['motd'],
+        username=user['username'],
+        img_count=len(user['images']),
+        uid=user['uid'],
+        key=user['key'],
+        space=space,
+    )
+
 
 @app.route("/dashboard/embed-conf/", methods=['GET', 'POST'])
 @login_required
 def embed_conf():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
-    embed = user['embed']
-    embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '', 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
+    user = query_db('SELECT * FROM users WHERE uid = ?',
+                    [session['uid']], one=True)
+    embed = query_db('SELECT * FROM embeds WHERE user = ?',
+                     [user['uid']], one=True)
+
+    embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '',
+                'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
     current = embed
+
     class EmbedConfigForm(Form):
         color = StringField("Color (hex code)", default=embed['color'])
         title = TextAreaField("Title", default=embed['title'])
         desc = TextAreaField("Description", default=embed['desc'])
-        author_name = TextAreaField("Author name", default=embed['author_name'])
+        author_name = TextAreaField(
+            "Author name", default=embed['author_name'])
         author_url = StringField("Author URL", default=embed['author_url'])
-        provider_name = TextAreaField("Site name", default=embed['provider_name'])
+        provider_name = TextAreaField(
+            "Site name", default=embed['provider_name'])
         provider_url = StringField("Site URL", default=embed['provider_url'])
     form = EmbedConfigForm(request.form)
     if request.method == 'POST' and form.validate():
@@ -262,15 +342,17 @@ def embed_conf():
         embed['provider_name'] = form.provider_name.data
         embed['provider_url'] = form.provider_url.data
 
-        user['embed'] = embed
-        users[str(session['uid'])] = user
+        db = get_db()
+        db.cursor().execute(
+            "REPLACE INTO embeds VALUES(?, ?, ?, ?, ?, ?, ?)", [session['uid'], embed['title'], embed['desc'], embed['author_name'], embed['author_url'], embed['provider_name'], embed['provider_url']])
+        db.commit()
 
         flash("Embed preferences successfully set!")
 
-    users.close()
-    vars = ['$user.name$', '$user.uid$', '$user.email$', '$user.img_count$', '$user.used_space$', '$img.name$', '$img.id$', '$img.ext$', '$img.uploaded_at.timestamp$', '$img.uploaded_at.utc$', '$img.size$', '$host.name$', '$host.motd$']
+    vars = ['$user.name$', '$user.uid$', '$user.email$', '$user.img_count$', '$user.used_space$', '$img.name$', '$img.id$',
+            '$img.ext$', '$img.uploaded_at.timestamp$', '$img.uploaded_at.utc$', '$img.size$', '$host.name$', '$host.motd$']
     return render_template("embed_conf.html", name=config['name'], version=ver, motd=config['motd'], form=form,
-                            username=user['username'], current=current, vars=vars)
+                           username=user['username'], current=current, vars=vars)
 
 
 class LoginForm(Form):
@@ -278,7 +360,8 @@ class LoginForm(Form):
     password = PasswordField('Password', [
         validators.DataRequired(),
     ])
-    
+
+
 class RegistrationForm(Form):
     username = StringField('Username', [validators.Length(min=4, max=20)])
     email = StringField('Email Address', [validators.Length(min=6, max=50)])
@@ -288,6 +371,7 @@ class RegistrationForm(Form):
     ])
     confirm = PasswordField('Repeat Password', [validators.DataRequired()])
 
+
 @app.route("/dashboard/login/", methods=['GET', 'POST'])
 def login():  # sourcery skip: merge-nested-ifs
     if 'logged_in' in session:
@@ -296,29 +380,30 @@ def login():  # sourcery skip: merge-nested-ifs
     else:
         form = LoginForm(request.form)
         if request.method == 'POST' and form.validate():
-            users = shelve.open(os.path.join("config", "users.shelve"))
             username = form.username.data
             valid = False
-            user = None
-            for usr in users.values():
-                if usr['username'] == username:
-                    if sha256_crypt.verify(form.password.data, usr['password_hash']):
-                        user = usr
-                        valid = True
-                        break
+            user = query_db('SELECT * FROM users WHERE username = ?',
+                            [username], one=True)
+            if user is None:
+                valid = False
+            elif sha256_crypt.verify(form.password.data, user['password_hash']):
+                valid = True
+            else:
+                valid = False
 
             if valid:
                 session['logged_in'] = True
-                session['uid'] = usr['uid']
+                session['uid'] = user['uid']
                 flash("Logged in successfully.")
-                users.close()
+
                 return redirect(url_for("dashboard"))
             else:
                 flash("Invalid username or password")
-                users.close()
+
                 return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
 
         return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
+
 
 @app.route("/dashboard/logout/")
 @login_required
@@ -326,6 +411,7 @@ def logout():
     session.clear()
     flash("You have been successfully logged out.")
     return redirect(url_for("home"))
+
 
 @app.route("/dashboard/register/", methods=['GET', 'POST'])
 def register():
@@ -335,41 +421,47 @@ def register():
     else:
         form = RegistrationForm(request.form)
         if request.method == 'POST' and form.validate():
-            users = shelve.open(os.path.join("config", "users.shelve"))
             username = form.username.data
             email = form.email.data
             password = sha256_crypt.hash((str(form.password.data)))
-            for usr in users.values():
-                if username == usr['username']:
-                    flash("This username is already taken, please choose another")
-                    users.close()
-                    return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
-            
-            latest_uid = int(list(users.keys())[-1])
+            user = query_db('SELECT * FROM users WHERE username = ?',
+                            [username], one=True)
+            if user is not None:
+                flash("This username is already taken, please choose another")
 
-            users[str(latest_uid + 1)] = {
-                "username": username,
-                "email": email,
-                "password_hash": password,
-                "key": f"{username}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}",
-                "uid": latest_uid + 1,
-                "images": [],
-                "embed": {},
-                "storage_used": 0
-            }
+                return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
+
+            # latest_uid = int(list(users.keys())[-1])
+            latest_uid = int(query_db("SELECT MAX(uid) FROM users", one=True))
+
+            # CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)
+
+            db = get_db()
+            db.cursor().execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
+                                [
+                                    latest_uid + 1,
+                                    username,
+                                    email,
+                                    password,
+                                    f"{username}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}",
+                                    0
+                                ]
+                                )
+
             session['logged_in'] = True
-            session['uid'] = latest_uid + 1
+            session['uid'] = str(latest_uid + 1)
             flash("Logged in successfully.")
-            users.close()
+
             return redirect(url_for("dashboard"))
 
         return render_template("register.html", name=config['name'], version=ver, motd=config['motd'], form=form)
 
+
 @app.route("/dashboard/sharex-config/")
 @login_required
 def sharex_config():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
+    user = query_db('SELECT * FROM users WHERE username = ?',
+                    [session['uid']], one=True)
     cfg = {
         "Version": "13.5.0",
         "Name": config['name'],
@@ -385,9 +477,9 @@ def sharex_config():
         "URL": "$json:url$",
         "ThumbnailURL": "$json:raw$",
         "ErrorMessage": "$response$"
-    } 
+    }
     resp = make_response(jsonify(cfg))
-    users.close()
+
     resp.headers['Content-Disposition'] = 'attachment; filename=config.sxcu'
     resp.content_type = 'text/html; charset=utf-8'
 
@@ -397,13 +489,19 @@ def sharex_config():
 @app.route("/dashboard/account/")
 @login_required
 def account():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
-    ret = render_template("account.html", name=config['name'], version=ver, motd=config['motd'],
-                           username=user['username'], uid=user['uid'], email=user['email'],
-                           key=user['key'])
-    users.close()
-    return ret
+    user = query_db('SELECT * FROM users WHERE username = ?',
+                    [session['uid']], one=True)
+    return render_template(
+        "account.html",
+        name=config['name'],
+        version=ver,
+        motd=config['motd'],
+        username=user['username'],
+        uid=user['uid'],
+        email=user['email'],
+        key=user['key'],
+    )
+
 
 class ChangePasswordForm(Form):
     old_password = PasswordField('Old Password', [
@@ -415,55 +513,58 @@ class ChangePasswordForm(Form):
     ])
     confirm = PasswordField('Repeat Password', [validators.DataRequired()])
 
+
 @app.route("/dashboard/change-password/", methods=['GET', 'POST'])
 @login_required
 def change_password():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
+    user = query_db('SELECT * FROM users WHERE username = ?',
+                    [session['uid']], one=True)
 
     form = ChangePasswordForm(request.form)
     if request.method == 'POST' and form.validate():
         if sha256_crypt.verify(form.old_password.data, user['password_hash']):
             password = sha256_crypt.encrypt((str(form.password.data)))
-            user['password_hash'] = password
-            users[str(session['uid'])] = user
+            db = get_db()
+            db.cursor().execute("UPDATE users SET password_hash = ? WHERE uid = ?",
+                                [password, session['uid']])
+            db.commit()
             flash("Password changed successfully.")
-            users.close()
             return redirect(url_for("dashboard"))
         else:
             flash("Invalid old password")
-            users.close()
             return render_template("change_password.html", name=config['name'], version=ver, motd=config['motd'], form=form, username=user['username'])
 
-    users.close()
     return render_template("change_password.html", name=config['name'], version=ver, motd=config['motd'], form=form, username=user['username'])
 
 
 @app.route("/dashboard/delete-account/")
 @login_required
 def delete_account():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
+    usr_images = query_db(
+        "SELECT * FROM images WHERE user = ?", [session['uid']])
 
-    for file in list(user['images']):
+    for img in usr_images:
+        file = img['id'] + img['ext']
         os.remove(os.path.join(config['storage_folder'], file))
-    
-    del users[str(session['uid'])]
 
-    users.close()
+    db = get_db()
+    db.cursor().execute("DELETE FROM users WHERE uid = ?", [session['uid']])
+    db.commit()
+
     flash("Account deleted successfully")
     return redirect(url_for("logout"))
+
 
 @app.route("/dashboard/regenerate-key/")
 @login_required
 def regenerate_key():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
+    user = query_db('SELECT * FROM users WHERE username = ?',
+                    [session['uid']], one=True)
+    db = get_db()
+    db.cursor().execute("UPDATE users SET key = ? WHERE uid = ?", [
+        f"{user['username']}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}", session['uid']])
+    db.commit()
 
-    user['key'] = f"{user['username']}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}"
-    users[str(session['uid'])] = user
-
-    users.close()
     flash("Key regenerated successfully, please re-download your config!")
     return redirect(url_for("dashboard"))
 
@@ -471,46 +572,49 @@ def regenerate_key():
 @app.route("/dashboard/gallery/")
 @login_required
 def gallery():
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
-    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
-
-    imgs = []
-    for img in user['images']:
-        img, _ = os.path.splitext(img)
-        imgs.append(images[img])
+    imgs = query_db("SELECT * FROM images WHERE user = ?", [session['uid']])
+    user = query_db('SELECT * FROM users WHERE username = ?',
+                    [session['uid']], one=True)
 
     imgs.reverse()
 
-    ret = render_template("gallery.html", name=config['name'], version=ver, motd=config['motd'], username=user['username'], imgs=imgs)
-    users.close()
-    images.close()
-    return ret
-    
+    return render_template(
+        "gallery.html",
+        name=config['name'],
+        version=ver,
+        motd=config['motd'],
+        username=user['username'],
+        imgs=imgs,
+    )
+
+
 @app.route("/dashboard/gallery/delete-image/<id>/")
 @login_required
 def delete_image(id):
-    users = shelve.open(os.path.join("config", "users.shelve"))
-    user = users[str(session['uid'])]
-    images = shelve.open(os.path.join(config['storage_folder'], 'images.shelve'))
+    user = query_db('SELECT * FROM users WHERE username = ?',
+                    [session['uid']], one=True)
 
-    if id not in list(images.keys()):
+    image = query_db('SELECT * FROM images WHERE id = ?',
+                     [id], one=True)
+
+    if image is None:
         flash("Image not found!")
         return redirect(url_for("gallery"))
-    if id + images[id]['ext'] not in user['images']:
+    if image['user'] != session['uid']:
         flash("Image not owned by user!")
         return redirect(url_for("gallery"))
 
-    user_imgs = user['images']
-    os.remove(os.path.join(config['storage_folder'], str(user['uid']), id + images[id]['ext']))
-    user_imgs.remove(id + images[id]['ext'])
-    user['images'] = user_imgs
-    user['storage_used'] -= images[id]['size_b']
-    users[str(user['uid'])] = user
-    del images[id]
+    os.remove(os.path.join(config['storage_folder'], str(
+        user['uid']), id + image['ext']))
+    db = get_db()
+    db.cursor().execute(
+        "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] - image['size_b'], session['uid']])
+    db.cursor().execute("DELETE FROM images WHERE id = ?", [id])
+    db.commit()
 
     flash("Image deleted successfully")
     return redirect(url_for("gallery"))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0")
