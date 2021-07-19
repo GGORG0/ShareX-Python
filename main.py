@@ -495,7 +495,7 @@ def sharex_config():
 @app.route("/dashboard/account/")
 @login_required
 def account():
-    user = query_db('SELECT * FROM users WHERE username = ?',
+    user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
     return render_template(
         "account.html",
