@@ -450,6 +450,7 @@ def register():
                                     0
                                 ]
                                 )
+            db.commit()
 
             session['logged_in'] = True
             session['uid'] = str(latest_uid + 1)
