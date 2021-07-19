@@ -81,12 +81,12 @@ setup_files()
 
 @app.errorhandler(404)
 def not_found(e):
-    return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error=e)
+    return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error=e), 404
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    return render_template("500.html", name=config['name'], version=ver, motd=config['motd'], error=e)
+    return render_template("500.html", name=config['name'], version=ver, motd=config['motd'], error=e), 500
 
 
 def login_required(func):
