@@ -144,8 +144,8 @@ def upload():
 
     img_id = secrets.token_urlsafe(5)
     filename = img_id + ext
-    if not os.path.exists(os.path.join(config['storage_folder'], user['uid'])):
-        os.mkdir(os.path.join(config['storage_folder'], user['uid']))
+    if not os.path.exists(os.path.join(config['storage_folder'], str(user['uid']))):
+        os.mkdir(os.path.join(config['storage_folder'], str(user['uid'])))
     file_without_exif.save(os.path.join(
         config['storage_folder'], user['uid'], filename))
     db = get_db()
