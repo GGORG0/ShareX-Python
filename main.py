@@ -152,7 +152,7 @@ def upload():
     db.cursor().execute(
         "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] + size, attributes['uid'][0]])
     db.cursor().execute("INSERT INTO images VALUES (?, ?, ?, ?, ?, ?)", [
-        name, img_id, ext, round(time.time()), size, attributes['uid'][0]])
+        img_id, name, ext, round(time.time()), size, attributes['uid'][0]])
     db.commit()
     return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
