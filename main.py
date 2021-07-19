@@ -466,7 +466,7 @@ def register():
 @app.route("/dashboard/sharex-config/")
 @login_required
 def sharex_config():
-    user = query_db('SELECT * FROM users WHERE username = ?',
+    user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
     cfg = {
         "Version": "13.5.0",
@@ -523,7 +523,7 @@ class ChangePasswordForm(Form):
 @app.route("/dashboard/change-password/", methods=['GET', 'POST'])
 @login_required
 def change_password():
-    user = query_db('SELECT * FROM users WHERE username = ?',
+    user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
 
     form = ChangePasswordForm(request.form)
@@ -564,7 +564,7 @@ def delete_account():
 @app.route("/dashboard/regenerate-key/")
 @login_required
 def regenerate_key():
-    user = query_db('SELECT * FROM users WHERE username = ?',
+    user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
     db = get_db()
     db.cursor().execute("UPDATE users SET key = ? WHERE uid = ?", [
@@ -579,7 +579,7 @@ def regenerate_key():
 @login_required
 def gallery():
     imgs = query_db("SELECT * FROM images WHERE user = ?", [session['uid']])
-    user = query_db('SELECT * FROM users WHERE username = ?',
+    user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
 
     imgs.reverse()
@@ -597,7 +597,7 @@ def gallery():
 @app.route("/dashboard/gallery/delete-image/<id>/")
 @login_required
 def delete_image(id):
-    user = query_db('SELECT * FROM users WHERE username = ?',
+    user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
 
     image = query_db('SELECT * FROM images WHERE id = ?',
