@@ -291,6 +291,8 @@ def logo():
 def dashboard():
     user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
+    images = query_db('SELECT * FROM users WHERE user = ?',
+                    [user['uid']])
     space = round(user['storage_used'] / (1024 * 1024), 2)
     return render_template(
         "dashboard.html",
@@ -298,7 +300,7 @@ def dashboard():
         version=ver,
         motd=config['motd'],
         username=user['username'],
-        img_count=len(user['images']),
+        img_count=len(images),
         uid=user['uid'],
         key=user['key'],
         space=space,
