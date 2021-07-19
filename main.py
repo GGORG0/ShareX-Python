@@ -435,7 +435,7 @@ def register():
                 return render_template("login.html", name=config['name'], version=ver, motd=config['motd'], form=form)
 
             # latest_uid = int(list(users.keys())[-1])
-            latest_uid = query_db("SELECT MAX(uid) FROM users")[0]
+            latest_uid = query_db("SELECT MAX(uid) FROM users", one=True)[0]
             latest_uid = 0 if latest_uid is None else int(latest_uid)
             # CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)
 
