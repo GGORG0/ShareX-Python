@@ -159,6 +159,8 @@ def upload():
 
 def process_embed(embed: dict, image: dict, user: dict):
     # sourcery skip: extract-method
+    if embed is None:
+        embed = {}
     embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '',
                 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
 
@@ -314,6 +316,9 @@ def embed_conf():
                     [session['uid']], one=True)
     embed = query_db('SELECT * FROM embeds WHERE user = ?',
                      [user['uid']], one=True)
+
+    if embed is None:
+        embed = {}
 
     embed = {**{'color': '', 'title': '', 'desc': '', 'author_name': '',
                 'author_url': '', 'provider_name': '', 'provider_url': ''}, **embed}
