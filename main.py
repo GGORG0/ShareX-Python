@@ -18,7 +18,7 @@ import shutil
 app = Flask(__name__)
 
 with open("pid.txt", "w") as f:
-    f.write(os.getpid())
+    f.write(str(os.getpid()))
 
 config = {}
 ver = ""
