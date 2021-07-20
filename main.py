@@ -163,7 +163,7 @@ def upload():
         db.cursor().execute("INSERT INTO invisibleurls VALUES (?, ?)", [
             invisible_id, img_id])
         db.commit()
-        return jsonify({"url": url_for("get_img", id="", _external=True) + invisible_id, "raw": url_for("img_raw", id=img_id, _external=True)}), 200
+        return jsonify({"url": url_for("get_img", id="", _external=True).replace("i/", "") + invisible_id, "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
     db.commit()
     return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
@@ -251,6 +251,9 @@ def get_img(id):
         embed_desc_on=desc_on,
     )
 
+@app.route("/<id>")
+def root_img(id):
+    return redirect(url_for("get_img", id=id))
 
 @app.route("/i/raw/<id>")
 def img_raw(id):
