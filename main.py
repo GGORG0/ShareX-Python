@@ -334,10 +334,10 @@ def embed_conf():
         desc = TextAreaField("Description", default=embed['desc'])
         author_name = TextAreaField(
             "Author name", default=embed['author_name'])
-        author_url = StringField("Author URL", default=embed['author_url'])
+        author_url = StringField("Author URL", default=embed['author_url'], render_kw={"type": "url"})
         provider_name = TextAreaField(
             "Site name", default=embed['provider_name'])
-        provider_url = StringField("Site URL", default=embed['provider_url'])
+        provider_url = StringField("Site URL", default=embed['provider_url'], render_kw={"type": "url"})
     form = EmbedConfigForm(request.form)
     if request.method == 'POST' and form.validate():
         if form.color.data != "":
@@ -378,7 +378,7 @@ class LoginForm(Form):
 
 class RegistrationForm(Form):
     username = StringField('Username', [validators.Length(min=4, max=20)])
-    email = StringField('Email Address', [validators.Length(min=6, max=50)])
+    email = StringField('Email Address', [validators.DataRequired()], render_kw={"type": "email"})
     password = PasswordField('New Password', [
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords must match')
