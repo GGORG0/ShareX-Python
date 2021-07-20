@@ -74,7 +74,7 @@ def setup_files():
             "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)")
         db.cursor().execute(
             "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
-        db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
+        db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, color TEXT, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
         db.commit()
 
 
@@ -358,7 +358,7 @@ def embed_conf():
 
         db = get_db()
         db.cursor().execute(
-            "REPLACE INTO embeds VALUES(?, ?, ?, ?, ?, ?, ?)", [session['uid'], embed['title'], embed['desc'], embed['author_name'], embed['author_url'], embed['provider_name'], embed['provider_url']])
+            "REPLACE INTO embeds VALUES(?, ?, ?, ?, ?, ?, ?, ?)", [session['uid'], embed['color'], embed['title'], embed['desc'], embed['author_name'], embed['author_url'], embed['provider_name'], embed['provider_url']])
         db.commit()
 
         flash("Embed preferences successfully set!")
