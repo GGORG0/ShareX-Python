@@ -1,7 +1,13 @@
 {% macro render_field(field) %}
 <div class="mb-3">
-    <dt>{{ field.label(class_="form-label") }}
-    <dd>{{ field(class_="form-control") }}
+    {% if field.type == "BooleanField" %}
+        <div class="form-check form-switch">
+            {{ field(class_="form-check-input") }}
+            {{ field.label(class_="form-check-label") }}
+    {% else %}
+        <dt>{{ field.label(class_="form-label") }}
+        <dd>{{ field(class_="form-control") }}
+    {% endif %}
     {% if field.errors %}
         <ul class=errors>
         {% for error in field.errors %}

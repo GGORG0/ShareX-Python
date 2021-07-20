@@ -2,7 +2,7 @@ from typing import Text
 from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, make_response, g
 import re
 import time
-from wtforms import Form, StringField, PasswordField, validators, TextAreaField
+from wtforms import Form, StringField, PasswordField, validators, TextAreaField, BooleanField
 from passlib.hash import sha256_crypt
 from functools import wraps
 import json
@@ -48,7 +48,7 @@ def query_db(query, args=(), one=False):
     return (rv[0] if rv else None) if one else rv
 
 
-def setup_files():
+def setup_files():  # sourcery skip: extract-method
     global config
     global ver
     if not os.path.exists("config"):
@@ -71,10 +71,12 @@ def setup_files():
     with app.app_context():
         db = get_db()
         db.cursor().execute(
-            "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)")
+            "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC, invisibleurls INTEGER NOT NULL)")
         db.cursor().execute(
             "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
         db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, color TEXT, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
+        db.cursor().execute(
+            "CREATE TABLE IF NOT EXISTS invisibleurls (url TEXT PRIMARY KEY, imgid TEXT NOT NULL)")
         db.commit()
 
 
@@ -153,6 +155,16 @@ def upload():
         "UPDATE users SET storage_used = ? WHERE uid = ?", [user['storage_used'] + size, attributes['uid'][0]])
     db.cursor().execute("INSERT INTO images VALUES (?, ?, ?, ?, ?, ?)", [
         img_id, name, ext, round(time.time()), size, attributes['uid'][0]])
+    if user['invisibleurls'] == 1:
+        charset = ['\u200B', '\u2060', '\u200D', '\u200C']
+        invisible_id = [random.choice(charset) for _ in range(24)]
+        invisible_id.append('\u200B')
+        invisible_id = ''.join(invisible_id)
+        db.cursor().execute("INSERT INTO invisibleurls VALUES (?, ?)", [
+            invisible_id, img_id])
+        db.commit()
+        return jsonify({"url": url_for("get_img", id="", _external=True) + invisible_id, "raw": url_for("img_raw", id=img_id, _external=True)}), 200
+
     db.commit()
     return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
@@ -188,8 +200,19 @@ def process_embed(embed: dict, image: dict, user: dict):
 
 @app.route("/i/<id>", methods=['GET', 'DELETE'])
 def get_img(id):
+    if id.endswith('\u200B'):
+        invisibleurl = query_db('SELECT * FROM invisibleurls WHERE url = ?',
+                                [id], one=True)
+
+        if invisibleurl is None:
+            return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error="Invalid ivisible URL"), 404
+
+        id = invisibleurl['imgid']
+
     image = query_db('SELECT * FROM images WHERE id = ?',
                      [id], one=True)
+    if image is None:
+        return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error="Image not found"), 404
     user = query_db('SELECT * FROM users WHERE uid = ?',
                     [image['user']], one=True)
     embed = query_db('SELECT * FROM embeds WHERE user = ?',
@@ -367,7 +390,29 @@ def embed_conf():
     vars = ['$user.name$', '$user.uid$', '$user.email$', '$user.img_count$', '$user.used_space$', '$img.name$', '$img.id$',
             '$img.ext$', '$img.uploaded_at.timestamp$', '$img.uploaded_at.utc$', '$img.size$', '$host.name$', '$host.motd$']
     return render_template("embed_conf.html", name=config['name'], version=ver, motd=config['motd'], form=form,
-                           username=user['username'], current=current, vars=vars)
+                           username=user['username'], vars=vars)
+
+
+@app.route("/dashboard/url-conf/", methods=['GET', 'POST'])
+def url_conf():
+    user = query_db('SELECT * FROM users WHERE uid = ?',
+                    [session['uid']], one=True)
+
+    class UrlConfigForm(Form):
+        invisibleurl = BooleanField(
+            "Invisible URLs", default="checked" if user['invisibleurls'] else "")
+
+    form = UrlConfigForm(request.form)
+    if request.method == 'POST' and form.validate():
+        db = get_db()
+        db.cursor().execute("UPDATE users SET invisibleurls = ? WHERE uid = ?",
+                            [1 if form.invisibleurl.data else 0, session['uid']])
+        db.commit()
+
+        flash("URL preferences successfully set!")
+
+    return render_template("url_conf.html", name=config['name'], version=ver, motd=config['motd'], form=form,
+                           username=user['username'])
 
 
 class LoginForm(Form):
@@ -453,14 +498,14 @@ def register():
             # CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC)
 
             db = get_db()
-            db.cursor().execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
+            db.cursor().execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?)",
                                 [
                                     latest_uid + 1,
                                     username,
                                     email,
                                     password,
                                     f"{username}_{''.join(random.choice(string.ascii_letters) for _ in range(10))}",
-                                    0
+                                    0, 0
                                 ]
                                 )
             db.commit()
