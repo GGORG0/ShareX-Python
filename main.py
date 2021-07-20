@@ -235,7 +235,7 @@ def img_raw(id):
     img = query_db('SELECT * FROM images WHERE id = ?',
                    [id], one=True)
     usr = img['user']
-    dir = os.path.join(config['storage_folder'], usr)
+    dir = os.path.join(config['storage_folder'], str(usr))
     filename = img['id'] + img['ext']
 
     return send_from_directory(dir, filename)
