@@ -214,6 +214,8 @@ def get_img(id):
 
         id = invisibleurl['imgid']
 
+        return redirect(url_for("get_img", id = id))
+
     image = query_db('SELECT * FROM images WHERE id = ?',
                      [id], one=True)
     if image is None:
