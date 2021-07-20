@@ -25,6 +25,5 @@ There is a 24/7, up-to-date hosted by me instance of it named SharX available ov
 
 ## TODO
 - Domains
-- Invisible links
 - Uploading from the dashboard
 - URL Shortener
