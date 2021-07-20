@@ -156,7 +156,7 @@ def upload():
     db.cursor().execute("INSERT INTO images VALUES (?, ?, ?, ?, ?, ?)", [
         img_id, name, ext, round(time.time()), size, attributes['uid'][0]])
     if user['invisibleurls'] == 1:
-        charset = ['\u200B', '\u2060', '\u200D', '\u200C']
+        charset = ['\u200B', '\u2060', '\u180E', '\u200D', '\u200C']
         invisible_id = [random.choice(charset) for _ in range(24)]
         invisible_id.append('\u200B')
         invisible_id = ''.join(invisible_id)
