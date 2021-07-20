@@ -615,7 +615,7 @@ def delete_image(id):
     if image is None:
         flash("Image not found!")
         return redirect(url_for("gallery"))
-    if image['user'] != session['uid']:
+    if str(image['user']) != str(session['uid']):
         flash("Image not owned by user!")
         return redirect(url_for("gallery"))
 
