@@ -166,8 +166,12 @@ def process_embed(embed: dict, image: dict, user: dict):
 
     space = round(user['storage_used'] / (1024 * 1024), 2)
 
+
+    images = query_db('SELECT * FROM images WHERE user = ?',
+                     [user['uid']])
+
     replace_dict = {'$user.name$': user['username'], '$user.uid$': user['uid'], '$user.email$': user['email'],
-                    '$user.img_count$': len(user['images']), '$user.used_space$': space, '$img.name$': image['name'],
+                    '$user.img_count$': len(images), '$user.used_space$': space, '$img.name$': image['name'],
                     '$img.id$': image['id'], '$img.ext$': image['ext'], '$img.uploaded_at.timestamp$': image['upload_time'],
                     '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
                     '$img.size$': str(round(image['size_b'] / 1024, 2)), '$host.name$': config['name'], '$host.motd$': config['motd']}
