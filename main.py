@@ -166,9 +166,8 @@ def process_embed(embed: dict, image: dict, user: dict):
 
     space = round(user['storage_used'] / (1024 * 1024), 2)
 
-
     images = query_db('SELECT * FROM images WHERE user = ?',
-                     [user['uid']])
+                      [user['uid']])
 
     replace_dict = {'$user.name$': user['username'], '$user.uid$': user['uid'], '$user.email$': user['email'],
                     '$user.img_count$': len(images), '$user.used_space$': space, '$img.name$': image['name'],
@@ -298,7 +297,7 @@ def dashboard():
     user = query_db('SELECT * FROM users WHERE uid = ?',
                     [session['uid']], one=True)
     images = query_db('SELECT * FROM images WHERE user = ?',
-                    [user['uid']])
+                      [user['uid']])
     space = round(user['storage_used'] / (1024 * 1024), 2)
     return render_template(
         "dashboard.html",
@@ -334,10 +333,12 @@ def embed_conf():
         desc = TextAreaField("Description", default=embed['desc'])
         author_name = TextAreaField(
             "Author name", default=embed['author_name'])
-        author_url = StringField("Author URL", default=embed['author_url'], render_kw={"type": "url"})
+        author_url = StringField(
+            "Author URL", default=embed['author_url'], render_kw={"type": "url"})
         provider_name = TextAreaField(
             "Site name", default=embed['provider_name'])
-        provider_url = StringField("Site URL", default=embed['provider_url'], render_kw={"type": "url"})
+        provider_url = StringField(
+            "Site URL", default=embed['provider_url'], render_kw={"type": "url"})
     form = EmbedConfigForm(request.form)
     if request.method == 'POST' and form.validate():
         if form.color.data != "":
@@ -378,7 +379,8 @@ class LoginForm(Form):
 
 class RegistrationForm(Form):
     username = StringField('Username', [validators.Length(min=4, max=20)])
-    email = StringField('Email Address', [validators.DataRequired()], render_kw={"type": "email"})
+    email = StringField(
+        'Email Address', [validators.DataRequired()], render_kw={"type": "email"})
     password = PasswordField('New Password', [
         validators.DataRequired(),
         validators.EqualTo('confirm', message='Passwords must match')
