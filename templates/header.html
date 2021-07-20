@@ -7,10 +7,11 @@
     <meta property="og:description" content="{{ motd }}">
     <meta name="theme-color" content="#ff6600">
     <meta name="color-scheme" content="dark">
-    <title>{{ name }} v{{ version }}</title>
+    <title>{{ name }} v{{ version }} - {% block title %}{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-dark-5@1.0.2/dist/css/bootstrap-night.min.css" rel="stylesheet">
     <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous"> -->
+    {% block head %}{% endblock %}
 </head>
 
 <body>
