@@ -210,7 +210,7 @@ def get_img(id):
                                 [id], one=True)
 
         if invisibleurl is None:
-            return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error="Invalid ivisible URL"), 404
+            return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error="Invalid invisible URL"), 404
 
         id = invisibleurl['imgid']
 
