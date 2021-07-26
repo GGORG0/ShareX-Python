@@ -306,8 +306,8 @@ def get_embed(id):
 
 @app.route("/")
 def home():
-    img_count = query_db("SELECT count(*) FROM images", one=True)
-    usr_count = query_db("SELECT count(*) FROM users", one=True)
+    img_count = query_db("SELECT count(*) FROM images", one=True)[0]
+    usr_count = query_db("SELECT count(*) FROM users", one=True)[0]
     users = query_db("SELECT * FROM users")
     total_storage = round(sum(user['storage_used'] for user in users) / (1024 * 1024), 2)
     return render_template("index.html", name=config['name'], version=ver, motd=config['motd'], user_count=usr_count, storage_used=total_storage, image_count=img_count)
