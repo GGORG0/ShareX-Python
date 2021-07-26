@@ -8,5 +8,13 @@
 <br>
 <h2>MOTD</h2>
 <h3>{{ motd }}</h3>
+<br>
+<br>
+<h2>Statistics:</h2>
+<ul class="list-group list-group-flush">
+    <li class="list-group-item"><strong>Users:</strong>{{ user_count }}</li>
+    <li class="list-group-item"><strong>Storage used:</strong>{{ storage_used }} MB</li>
+    <li class="list-group-item"><strong>Images uploaded:</strong>{{ image_count }}</li>
+</ul>
 
 {% endblock %}
