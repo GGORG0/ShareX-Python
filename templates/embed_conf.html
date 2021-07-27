@@ -2,38 +2,38 @@
 
 {% block main %}
 
-<h1>{{ name }} v{{ version }} - Dashboard (Embed configuration)</h1>
-<h2>Welcome, <strong>{{ username }}</strong>!</h2>
-<h3>Here you can configure your embeds</h3>
-<div class="container">
-    <div class="row align-items-start">
-        <div class="col">
-            <h4>Tip: You can leave some of them blank!</h4>
-            {% from "_formhelpers.html" import render_field %}
-            <form method=post action="{{ url_for('embed_conf') }}">
-                <dl>
-                    {{ render_field(form.color) }}
-                    {{ render_field(form.title) }}
-                    {{ render_field(form.desc) }}
-                    {{ render_field(form.author_name) }}
-                    {{ render_field(form.author_url) }}
-                    {{ render_field(form.provider_name) }}
-                    {{ render_field(form.provider_url) }}
-            </dl>
-            <p><input type=submit value="Apply"></p>
-            </form>
-        </div>
-        <div class="col">
-            <p>
-                The available variables are:
-                <br>
-                {% for name in vars %}
-                    <code>{{ name }}</code> 
+    <h1>{{ name }} v{{ version }} - Dashboard (Embed configuration)</h1>
+    <h2>Welcome, <strong>{{ username }}</strong>!</h2>
+    <h3>Here you can configure your embeds</h3>
+    <div class="container">
+        <div class="row align-items-start">
+            <div class="col">
+                <h4>Tip: You can leave some of them blank!</h4>
+                {% from "_formhelpers.html" import render_field %}
+                <form method=post action="{{ url_for('embed_conf') }}">
+                    <dl>
+                        {{ render_field(form.color) }}
+                        {{ render_field(form.title) }}
+                        {{ render_field(form.desc) }}
+                        {{ render_field(form.author_name) }}
+                        {{ render_field(form.author_url) }}
+                        {{ render_field(form.provider_name) }}
+                        {{ render_field(form.provider_url) }}
+                    </dl>
+                    <p><input type=submit value="Apply"></p>
+                </form>
+            </div>
+            <div class="col">
+                <p>
+                    The available variables are:
+                    <br>
+                    {% for name in vars %}
+                        <code>{{ name }}</code>
 
-                {% endfor %}
-            </p>
+                    {% endfor %}
+                </p>
+            </div>
         </div>
     </div>
-</div>
 
 {% endblock %}

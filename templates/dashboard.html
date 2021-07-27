@@ -2,51 +2,52 @@
 
 {% block main %}
 
-<h1>{{ name }} v{{ version }} - Dashboard</h1>
-<h2>Welcome, <strong>{{ username }}</strong>!</h2>
-<h3>Thanks for using {{ name }}!</h3>
-<div class="container">
-  <div class="row">
-    <div class="col">
-        <div class="card" style="width: 18rem;">
-            <div class="card-body">
-                <h5 class="card-title">Image count</h5>
-                <p class="card-text">You have uploaded {{ img_count }} image{{ '' if img_count == 1 else 's' }}!</p>
+    <h1>{{ name }} v{{ version }} - Dashboard</h1>
+    <h2>Welcome, <strong>{{ username }}</strong>!</h2>
+    <h3>Thanks for using {{ name }}!</h3>
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="card" style="width: 18rem;">
+                    <div class="card-body">
+                        <h5 class="card-title">Image count</h5>
+                        <p class="card-text">You have uploaded {{ img_count }}
+                            image{{ '' if img_count == 1 else 's' }}!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card" style="width: 18rem;">
+                    <div class="card-body">
+                        <h5 class="card-title">UID</h5>
+                        <p class="card-text">Your user ID is {{ uid }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <div class="card" style="width: 18rem;">
+                    <div class="card-body">
+                        <h5 class="card-title">Upload key</h5>
+                        <p class="card-text">Your upload key is <strong>{{ key }}</strong>. Keep it secret!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card" style="width: 18rem;">
+                    <div class="card-body">
+                        <h5 class="card-title">Storage</h5>
+                        <p class="card-text">You have used {{ space }} MB of storage!</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="card" style="width: 18rem;">
-            <div class="card-body">
-                <h5 class="card-title">UID</h5>
-                <p class="card-text">Your user ID is {{ uid }}</p>
-            </div>
-        </div>
-    </div>
-  </div>
-  <div class="row">
-    <div class="col">
-        <div class="card" style="width: 18rem;">
-            <div class="card-body">
-                <h5 class="card-title">Upload key</h5>
-                <p class="card-text">Your upload key is <strong>{{ key }}</strong>. Keep it secret!</p>
-            </div>
-        </div>
-    </div>
-    <div class="col">
-        <div class="card" style="width: 18rem;">
-            <div class="card-body">
-                <h5 class="card-title">Storage</h5>
-                <p class="card-text">You have used {{ space }} MB of storage!</p>
-            </div>
-        </div>
-    </div>
-  </div>
-</div>
 
-<br>
-<br>
-<h2><strong>MOTD</strong></h2>
-<h3>{{ motd }}</h3>
+    <br>
+    <br>
+    <h2><strong>MOTD</strong></h2>
+    <h3>{{ motd }}</h3>
 
 {% endblock %}

@@ -2,15 +2,15 @@
 
 {% block main %}
 
-<h1>{{ name }} v{{ version }} - Dashboard (URL configuration)</h1>
-<h2>Welcome, <strong>{{ username }}</strong>!</h2>
-<h3>Here you can configure your URLs</h3>
-{% from "_formhelpers.html" import render_field %}
-<form method=post action="{{ url_for('url_conf') }}">
-    <dl>
-        {{ render_field(form.invisibleurl) }}
-</dl>
-<p><input type=submit value="Apply"></p>
-</form>
+    <h1>{{ name }} v{{ version }} - Dashboard (URL configuration)</h1>
+    <h2>Welcome, <strong>{{ username }}</strong>!</h2>
+    <h3>Here you can configure your URLs</h3>
+    {% from "_formhelpers.html" import render_field %}
+    <form method=post action="{{ url_for('url_conf') }}">
+        <dl>
+            {{ render_field(form.invisibleurl) }}
+        </dl>
+        <p><input type=submit value="Apply"></p>
+    </form>
 
 {% endblock %}

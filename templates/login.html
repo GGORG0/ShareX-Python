@@ -2,25 +2,25 @@
 
 {% block body %}
 
-<h1>Login</h1>
-<br>
-{% from "_formhelpers.html" import render_field %}
-<form method=post action="{{ url_for('login') }}">
-    <dl>
-        {{ render_field(form.username) }}
-        {{ render_field(form.password) }}
-    </dl>
-    <p><input type=submit value=Login></p>
-</form>
+    <h1>Login</h1>
+    <br>
+    {% from "_formhelpers.html" import render_field %}
+    <form method=post action="{{ url_for('login') }}">
+        <dl>
+            {{ render_field(form.username) }}
+            {{ render_field(form.password) }}
+        </dl>
+        <p><input type=submit value=Login></p>
+    </form>
 
-<br>
-<br>
+    <br>
+    <br>
 
-<div class="card" style="width: 18rem;">
-    <div class="card-body">
-        <h5 class="card-title">No account yet?</h5>
-        <a href="{{ url_for('register') }}" class="btn btn-primary">Register</a>
+    <div class="card" style="width: 18rem;">
+        <div class="card-body">
+            <h5 class="card-title">No account yet?</h5>
+            <a href="{{ url_for('register') }}" class="btn btn-primary">Register</a>
+        </div>
     </div>
-</div>
 
 {% endblock %}

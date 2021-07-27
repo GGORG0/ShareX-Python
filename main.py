@@ -1,19 +1,20 @@
-from typing import Text
-from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, make_response, g
-import re
-import time
-from wtforms import Form, StringField, PasswordField, validators, TextAreaField, BooleanField
-from passlib.hash import sha256_crypt
-from functools import wraps
+import datetime
 import json
 import os
-import datetime
-import string
-import secrets
-import sqlite3
 import random
-from PIL import Image
+import re
+import secrets
 import shutil
+import sqlite3
+import string
+import time
+from functools import wraps
+
+from PIL import Image
+from flask import Flask, request, send_from_directory, render_template, redirect, session, url_for, flash, jsonify, \
+    make_response, g
+from passlib.hash import sha256_crypt
+from wtforms import Form, StringField, PasswordField, validators, TextAreaField, BooleanField
 
 app = Flask(__name__)
 
@@ -71,10 +72,13 @@ def setup_files():  # sourcery skip: extract-method
     with app.app_context():
         db = get_db()
         db.cursor().execute(
-            "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC, invisibleurls INTEGER NOT NULL)")
+            "CREATE TABLE IF NOT EXISTS users (uid INTEGER PRIMARY KEY, username TEXT NOT NULL, email TEXT NOT NULL, "
+            "password_hash TEXT NOT NULL, key TEXT NOT NULL, storage_used NUMERIC, invisibleurls INTEGER NOT NULL)")
         db.cursor().execute(
-            "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
-        db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, color TEXT, title TEXT, desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
+            "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, name TEXT NOT NULL, ext TEXT, upload_time "
+            "INTEGER NOT NULL, size_b INTEGER NOT NULL, user INTEGER NOT NULL)")
+        db.cursor().execute("CREATE TABLE IF NOT EXISTS embeds (user TEXT PRIMARY KEY, color TEXT, title TEXT, "
+                            "desc TEXT, author_name TEXT, author_url TEXT, provider_name TEXT, provider_url TEXT)")
         db.cursor().execute(
             "CREATE TABLE IF NOT EXISTS invisibleurls (url TEXT PRIMARY KEY, imgid TEXT NOT NULL)")
         db.commit()
@@ -168,10 +172,12 @@ def upload():
         db.cursor().execute("INSERT INTO invisibleurls VALUES (?, ?)", [
             invisible_id, img_id])
         db.commit()
-        return jsonify({"url": url_for("get_img", id="", _external=True).replace("i/", "") + invisible_id, "raw": url_for("img_raw", id=img_id, _external=True)}), 200
+        return jsonify({"url": url_for("get_img", id="", _external=True).replace("i/", "") + invisible_id,
+                        "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
     db.commit()
-    return jsonify({"url": url_for("get_img", id=img_id, _external=True), "raw": url_for("img_raw", id=img_id, _external=True)}), 200
+    return jsonify({"url": url_for("get_img", id=img_id, _external=True),
+                    "raw": url_for("img_raw", id=img_id, _external=True)}), 200
 
 
 def process_embed(embed: dict, image: dict, user: dict):
@@ -188,9 +194,12 @@ def process_embed(embed: dict, image: dict, user: dict):
 
     replace_dict = {'$user.name$': user['username'], '$user.uid$': user['uid'], '$user.email$': user['email'],
                     '$user.img_count$': len(images), '$user.used_space$': space, '$img.name$': image['name'],
-                    '$img.id$': image['id'], '$img.ext$': image['ext'], '$img.uploaded_at.timestamp$': image['upload_time'],
-                    '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime("%d.%m.%Y %H:%M"),
-                    '$img.size$': str(round(image['size_b'] / 1024, 2)), '$host.name$': config['name'], '$host.motd$': config['motd']}
+                    '$img.id$': image['id'], '$img.ext$': image['ext'],
+                    '$img.uploaded_at.timestamp$': image['upload_time'],
+                    '$img.uploaded_at.utc$': datetime.datetime.utcfromtimestamp(image['upload_time']).strftime(
+                        "%d.%m.%Y %H:%M"),
+                    '$img.size$': str(round(image['size_b'] / 1024, 2)), '$host.name$': config['name'],
+                    '$host.motd$': config['motd']}
 
     for a, b in replace_dict.items():
         embed['title'] = embed['title'].replace(str(a), str(b))
@@ -210,16 +219,18 @@ def get_img(id):
                                 [id], one=True)
 
         if invisibleurl is None:
-            return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error="Invalid invisible URL"), 404
+            return render_template("404.html", name=config['name'], version=ver, motd=config['motd'],
+                                   error="Invalid invisible URL"), 404
 
         id = invisibleurl['imgid']
 
-        return redirect(url_for("get_img", id = id))
+        return redirect(url_for("get_img", id=id))
 
     image = query_db('SELECT * FROM images WHERE id = ?',
                      [id], one=True)
     if image is None:
-        return render_template("404.html", name=config['name'], version=ver, motd=config['motd'], error="Image not found"), 404
+        return render_template("404.html", name=config['name'], version=ver, motd=config['motd'],
+                               error="Image not found"), 404
     user = query_db('SELECT * FROM users WHERE uid = ?',
                     [image['user']], one=True)
     embed = query_db('SELECT * FROM embeds WHERE user = ?',
@@ -229,7 +240,8 @@ def get_img(id):
         embed = {}
 
     embed = process_embed(embed, image, user)
-    embed_adv = embed['author_name'] != "" or embed['author_url'] != "" or embed['provider_name'] != "" or embed['provider_url'] != ""
+    embed_adv = embed['author_name'] != "" or embed['author_url'] != "" or embed['provider_name'] != "" or embed[
+        'provider_url'] != ""
 
     color_on = embed['color'] != ""
     title_on = embed['title'] != ""
@@ -258,9 +270,11 @@ def get_img(id):
         embed_desc_on=desc_on,
     )
 
+
 @app.route("/<id>")
 def root_img(id):
     return redirect(url_for("get_img", id=id))
+
 
 @app.route("/i/raw/<id>")
 def img_raw(id):
@@ -310,7 +324,8 @@ def home():
     usr_count = query_db("SELECT count(*) FROM users", one=True)[0]
     users = query_db("SELECT * FROM users")
     total_storage = round(sum(user['storage_used'] for user in users) / (1024 * 1024), 2)
-    return render_template("index.html", name=config['name'], version=ver, motd=config['motd'], user_count=usr_count, storage_used=total_storage, image_count=img_count)
+    return render_template("index.html", name=config['name'], version=ver, motd=config['motd'], user_count=usr_count,
+                           storage_used=total_storage, image_count=img_count)
 
 
 @app.route("/discord/")
@@ -376,6 +391,7 @@ def embed_conf():
             "Site name", default=embed['provider_name'])
         provider_url = StringField(
             "Site URL", default=embed['provider_url'], render_kw={"type": "url"})
+
     form = EmbedConfigForm(request.form)
     if request.method == 'POST' and form.validate():
         if form.color.data != "":
@@ -396,13 +412,17 @@ def embed_conf():
 
         db = get_db()
         db.cursor().execute(
-            "REPLACE INTO embeds VALUES(?, ?, ?, ?, ?, ?, ?, ?)", [session['uid'], embed['color'], embed['title'], embed['desc'], embed['author_name'], embed['author_url'], embed['provider_name'], embed['provider_url']])
+            "REPLACE INTO embeds VALUES(?, ?, ?, ?, ?, ?, ?, ?)",
+            [session['uid'], embed['color'], embed['title'], embed['desc'], embed['author_name'], embed['author_url'],
+             embed['provider_name'], embed['provider_url']])
         db.commit()
 
         flash("Embed preferences successfully set!")
 
-    vars = ['$user.name$', '$user.uid$', '$user.email$', '$user.img_count$', '$user.used_space$', '$img.name$', '$img.id$',
-            '$img.ext$', '$img.uploaded_at.timestamp$', '$img.uploaded_at.utc$', '$img.size$', '$host.name$', '$host.motd$']
+    vars = ['$user.name$', '$user.uid$', '$user.email$', '$user.img_count$', '$user.used_space$', '$img.name$',
+            '$img.id$',
+            '$img.ext$', '$img.uploaded_at.timestamp$', '$img.uploaded_at.utc$', '$img.size$', '$host.name$',
+            '$host.motd$']
     return render_template("embed_conf.html", name=config['name'], version=ver, motd=config['motd'], form=form,
                            username=user['username'], vars=vars)
 
@@ -608,9 +628,11 @@ def change_password():
             return redirect(url_for("dashboard"))
         else:
             flash("Invalid old password")
-            return render_template("change_password.html", name=config['name'], version=ver, motd=config['motd'], form=form, username=user['username'])
+            return render_template("change_password.html", name=config['name'], version=ver, motd=config['motd'],
+                                   form=form, username=user['username'])
 
-    return render_template("change_password.html", name=config['name'], version=ver, motd=config['motd'], form=form, username=user['username'])
+    return render_template("change_password.html", name=config['name'], version=ver, motd=config['motd'], form=form,
+                           username=user['username'])
 
 
 @app.route("/dashboard/delete-account/")
