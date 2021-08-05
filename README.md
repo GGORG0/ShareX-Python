@@ -2,6 +2,10 @@
 
 This is a ShareX uploader server written in Python Flask, also featuring a web frontend and a dashboard.
 
+# IMPORTANT! Moved to GitLab
+
+This repo has been rebranded and moved to GitLab and is available under this link: https://gitlab.com/GGORG/SharX . I won't be accepting anything in this repo.
+
 ## Hosted instance
 
 There is a 24/7, up-to-date hosted by me instance of it named SharX available over at https://sharx.host
